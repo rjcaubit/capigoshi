@@ -24,3 +24,6 @@ simulador.html
 # Arquivos gerados pela ferramenta de design (runtime com licenca propria e paginas que dependem dele)
 design_handoff_capigoshi_1c/support.js
 design_handoff_capigoshi_1c/*.dc.html
+
+# Cache local do wrangler
+.wrangler/

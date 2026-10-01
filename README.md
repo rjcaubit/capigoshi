@@ -19,8 +19,8 @@
 </p>
 
 > **English summary:** Capigoshi is an open-source virtual pet (think Tamagotchi) for the Waveshare
-> ESP32-S3-Touch-LCD-1.83 board, written in plain MicroPython. Nine characters (several drawn by a
-> kid), a day/night diorama, a life cycle from egg to star, 21 idle animations, and reactions to touch,
+> ESP32-S3-Touch-LCD-1.83 board, written in plain MicroPython. Nine characters (all created by a
+> 9-year-old), a day/night diorama, a life cycle from egg to star, 21 idle animations, and reactions to touch,
 > shaking and noise. Everything is drawn with `framebuf` primitives, no bitmaps. Docs are in Portuguese;
 > issues and PRs in English are welcome.
 
@@ -34,8 +34,8 @@ retângulos, triângulos e texto 8 × 8. Não há nenhuma imagem guardada na pla
 
 <p align="center"><img src="docs/img/elenco.png" alt="Os nove personagens: Capi, Elefante, Pato, Polvo, Calopsita, Caramelo, Gato, ET e Sapinho"></p>
 
-- **9 personagens:** Capi, Elefante, Pato, Polvo, Calopsita, Caramelo, Gato, ET e Sapinho. Vários
-  nasceram de desenhos de criança, e os traços foram mantidos, não "corrigidos".
+- **9 personagens:** Capi, Elefante, Pato, Polvo, Calopsita, Caramelo, Gato, ET e Sapinho. Todos
+  foram criados pelo João, de 9 anos, e os traços dele foram mantidos, não "corrigidos".
 - **Ele está vivo:** respira, sorteia um de 21 movimentos conforme a hora (dançar, cambalhota,
   cheirar flor, esconder num buraco, espirrar…) e fala com voz de minion.
 - **Ele reage:**
@@ -57,6 +57,14 @@ retângulos, triângulos e texto 8 × 8. Não há nenhuma imagem guardada na pla
 | Cuidar | Olhar (conversa com vizinho) | Passear | Menu puxado do topo |
 |:--:|:--:|:--:|:--:|
 | ![Modo Cuidar](docs/img/tela_pet_chamado_fome.png) | ![Modo Olhar](docs/img/tela_conversa_1.png) | ![Modo Passear](docs/img/tela_passear_auto.png) | ![Menu](docs/img/tela_menu_aberto_sim.png) |
+
+## Feito pelo João
+
+Os personagens, os movimentos e as ações do Capigoshi foram criados pelo João, de 9 anos. O código só
+traduziu cada traço do desenho dele para a tela, sem corrigir nada. Veja cada desenho ao lado do bichinho
+que ele virou [na página do projeto](https://capigoshi.pages.dev/#joao).
+
+<p align="center"><img src="docs/img/joao-desenhos.jpg" width="520" alt="Os desenhos originais do João: sapinho, calopsita, polvo, cachorro, gato, aquário, ET, elefante e pato"></p>
 
 ## Hardware
 

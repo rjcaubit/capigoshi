@@ -34,5 +34,8 @@ Universfield, Yodguard, Vadim_Makes_Sound, ShidenBeatsMusic, Phoenix_Connection_
 
 ## Personagens
 
-Os personagens Pato e Elefante, entre outros, nasceram de desenhos feitos à mão por uma criança. Os
-desenhos originais não estão no repositório, só a interpretação em código, com os traços mantidos.
+Os personagens, os movimentos e as ações do Capigoshi foram criados pelo **João, de 9 anos**. Os desenhos
+originais dele estão em `docs/img/joao_*` e `docs/img/joao-desenhos.jpg`, publicados com autorização da
+família. Eles **não** estão cobertos pela licença MIT: os direitos sobre os desenhos são do João e da
+família. O código que desenha os personagens na placa é MIT. Para outros usos dos desenhos, abra uma
+issue.

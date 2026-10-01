@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Capigoshi</title>
-<meta name="description" content="Um bichinho virtual de código aberto que mora numa plaquinha com tela touch. Nasce de um ovo, dança, fala com voz de minion e um dia vira estrela.">
+<meta name="description" content="Um bichinho virtual de código aberto, criado pelo João, de 9 anos. Mora numa plaquinha com tela touch, nasce de um ovo, dança, fala com voz de minion e um dia vira estrela.">
 <meta property="og:title" content="Capigoshi">
 <meta property="og:description" content="Bichinho virtual de código aberto em MicroPython: 9 personagens, 21 movimentos, do ovo à estrela.">
 <meta property="og:image" content="img/capigoshi-vivo.gif">
@@ -227,6 +227,17 @@ pre {
 .cartao p { color: var(--suave); }
 .cartao a { font-weight: 800; color: var(--laranja-e); }
 
+/* feito pelo joao */
+.joao-grade { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.par { background: var(--papel); border: 2px solid var(--linha); border-radius: 22px; padding: 14px; display: grid; gap: 10px; min-width: 0; align-content: start; }
+.par .duo { display: grid; grid-template-columns: minmax(0, 1.35fr) auto minmax(0, 1fr); align-items: center; gap: 8px; }
+.par .folha { position: relative; aspect-ratio: 1; border-radius: 14px; background: #fff; border: 2px solid var(--linha); overflow: hidden; }
+.par .folha img { position: absolute; inset: 8px; width: calc(100% - 16px); height: calc(100% - 16px); object-fit: contain; }
+.par .seta { font: 700 1.3rem var(--display); color: var(--laranja-e); }
+.par .tela { aspect-ratio: 1; border-radius: 14px; overflow: hidden; background: var(--horizonte); }
+.par .tela img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 62%; transform: scale(1.9); transform-origin: 50% 62%; image-rendering: pixelated; }
+.par .tela.vazio { background: transparent; border: 2px dashed var(--linha); display: grid; place-items: center; padding: 8px; text-align: center; color: var(--suave); font-size: .82rem; line-height: 1.3; }
+.par h3 { text-align: center; font-size: 1.1rem; }
 footer { background: var(--grama); color: #fff7e8; padding-block: 44px calc(44px + env(safe-area-inset-bottom, 0px)); border-top: 6px solid var(--grama-e); }
 footer .envelope { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 18px; align-items: center; }
 footer a { color: #fff7e8; }
@@ -235,6 +246,7 @@ footer a { color: #fff7e8; }
   .elenco { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 }
 @media (max-width: 940px) {
+  .joao-grade { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .hero { grid-template-columns: 1fr; gap: 10px; }
   .hero-texto { padding-bottom: 20px; }
   .vivo, .monte { grid-template-columns: 1fr; }
@@ -242,6 +254,7 @@ footer a { color: #fff7e8; }
   .aberto { grid-template-columns: 1fr; }
 }
 @media (max-width: 640px) {
+  .joao-grade { grid-template-columns: 1fr; gap: 12px; }
   body { font-size: 16px; }
   section { padding-block: 48px; }
   .barra nav { display: none; }
@@ -284,6 +297,7 @@ footer a { color: #fff7e8; }
       <a href="#elenco">Elenco</a>
       <a href="#vivo">Como ele vive</a>
       <a href="#ciclo">Do ovo à estrela</a>
+      <a href="#joao">Feito pelo João</a>
       <a href="#monte">Monte o seu</a>
     </nav>
   </div>
@@ -320,8 +334,8 @@ footer a { color: #fff7e8; }
   <section id="elenco" class="faixa-creme">
     <div class="envelope">
       <div class="titulo">
-        <h2>Nove amigos, vários desenhados por criança.</h2>
-        <p>O Pato de chapéu de bruxo e o Elefante de orelhas cor-de-rosa vieram de desenhos feitos à mão. Os traços foram mantidos, sem "correção". Cada um tem 5 olhares, 6 bocas, versão doente e frases próprias.</p>
+        <h2>Nove amigos, todos criados pelo João, de 9 anos.</h2>
+        <p>Os desenhos são do João. O código só traduziu cada traço, sem "corrigir" nada, e cada um ganhou 5 olhares, 6 bocas, versão doente e frases próprias. Os desenhos originais estão no fim da página.</p>
       </div>
       <div class="elenco">
         <article class="ficha"><div class="quadro"><img src="img/elenco_capi.png" alt="Capi, a capivara de fones de ouvido"></div><h3>Capi</h3><span class="fala">meus fones sao novos</span></article>
@@ -432,12 +446,32 @@ footer a { color: #fff7e8; }
       </div>
     </div>
   </section>
+
+  <section id="joao" class="faixa-creme">
+    <div class="envelope">
+      <div class="titulo">
+        <h2>Feito pelo João, de 9 anos.</h2>
+        <p>Os personagens, os movimentos e as ações do Capigoshi nasceram da cabeça dele. Aqui estão os desenhos originais ao lado do que viraram na tela da placa. O código só traduziu cada traço, sem corrigir nada.</p>
+      </div>
+      <div class="joao-grade">
+        <article class="par"><div class="duo"><div class="folha"><img src="img/joao_sapinho.webp" alt="Desenho do João: sapinho amarelo-esverdeado de olhos enormes" loading="lazy"></div><span class="seta" aria-hidden="true">&rarr;</span><div class="tela"><img src="img/elenco_sapinho.png" alt="O Sapinho na tela da placa"></div></div><h3>Sapinho</h3></article>
+        <article class="par"><div class="duo"><div class="folha"><img src="img/joao_calopsita.webp" alt="Desenho do João: calopsita amarela com a bochecha vermelha" loading="lazy"></div><span class="seta" aria-hidden="true">&rarr;</span><div class="tela"><img src="img/elenco_calopsita.png" alt="O Calopsita na tela da placa"></div></div><h3>Calopsita</h3></article>
+        <article class="par"><div class="duo"><div class="folha"><img src="img/joao_polvo.webp" alt="Desenho do João: polvo roxo sorridente" loading="lazy"></div><span class="seta" aria-hidden="true">&rarr;</span><div class="tela"><img src="img/elenco_polvo.png" alt="O Polvo na tela da placa"></div></div><h3>Polvo</h3></article>
+        <article class="par"><div class="duo"><div class="folha"><img src="img/joao_cachorro.webp" alt="Desenho do João: cachorrinho de orelhas caídas, a lápis" loading="lazy"></div><span class="seta" aria-hidden="true">&rarr;</span><div class="tela"><img src="img/elenco_cachorro.png" alt="O Caramelo na tela da placa"></div></div><h3>Caramelo</h3></article>
+        <article class="par"><div class="duo"><div class="folha"><img src="img/joao_gato.webp" alt="Desenho do João: gatinho de bochechas rosadas, a lápis" loading="lazy"></div><span class="seta" aria-hidden="true">&rarr;</span><div class="tela"><img src="img/elenco_gato.png" alt="O Gato na tela da placa"></div></div><h3>Gato</h3></article>
+        <article class="par"><div class="duo"><div class="folha"><img src="img/joao_et.webp" alt="Desenho do João: ET verde de três olhos e braços para cima" loading="lazy"></div><span class="seta" aria-hidden="true">&rarr;</span><div class="tela"><img src="img/elenco_et.png" alt="O ET na tela da placa"></div></div><h3>ET</h3></article>
+        <article class="par"><div class="duo"><div class="folha"><img src="img/joao_elefante.webp" alt="Desenho do João: elefante cinza de orelhas rosa" loading="lazy"></div><span class="seta" aria-hidden="true">&rarr;</span><div class="tela"><img src="img/elenco_elefante.png" alt="O Elefante na tela da placa"></div></div><h3>Elefante</h3></article>
+        <article class="par"><div class="duo"><div class="folha"><img src="img/joao_pato.webp" alt="Desenho do João: patinho amarelo de chapéu roxo de bruxo" loading="lazy"></div><span class="seta" aria-hidden="true">&rarr;</span><div class="tela"><img src="img/elenco_pato.png" alt="O Pato na tela da placa"></div></div><h3>Pato</h3></article>
+        <article class="par"><div class="duo"><div class="folha"><img src="img/joao_aquario.webp" alt="Desenho do João: aquário azul com um peixinho laranja" loading="lazy"></div><span class="seta" aria-hidden="true">&rarr;</span><div class="tela vazio">ainda não virou bichinho</div></div><h3>Aquário</h3></article>
+      </div>
+    </div>
+  </section>
 </main>
 
 <footer>
   <div class="envelope">
     <span class="pixel">capigoshi · feito com MicroPython e carinho</span>
-    <span>Licença MIT</span>
+    <span>Criado pelo João, 9 anos · Código sob licença MIT</span>
   </div>
 </footer>
 </body>
