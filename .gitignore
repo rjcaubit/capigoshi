@@ -1,0 +1,26 @@
+# Python / sistema
+__pycache__/
+*.pyc
+.DS_Store
+
+# Configuracao local com senha de Wi-Fi (use wifi_exemplo.json como modelo)
+wifi.json
+
+# Sons do Pixabay: a licenca nao permite redistribuir o arquivo solto (gere com sons/pixabay.sh)
+sons/extra/
+
+# Saidas da previa e estado salvo pelos testes
+previa/out/
+previa/png/
+previa/*.json
+
+# Arquivos de trabalho e versoes antigas
+.antes-1c/
+.playwright-mcp/
+capi.zip
+previa_*.png
+simulador.html
+
+# Arquivos gerados pela ferramenta de design (runtime com licenca propria e paginas que dependem dele)
+design_handoff_capigoshi_1c/support.js
+design_handoff_capigoshi_1c/*.dc.html

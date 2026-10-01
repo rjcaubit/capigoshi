@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Capigoshi</title>
+<meta name="description" content="Um bichinho virtual de código aberto que mora numa plaquinha com tela touch. Nasce de um ovo, dança, fala com voz de minion e um dia vira estrela.">
+<meta property="og:title" content="Capigoshi">
+<meta property="og:description" content="Bichinho virtual de código aberto em MicroPython: 9 personagens, 21 movimentos, do ovo à estrela.">
+<meta property="og:image" content="img/capigoshi-vivo.gif">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&family=Press+Start+2P&display=swap">
+<style>
+/* A pagina e o diorama: ceu em faixas chapadas (como na placa), chao de grama, aparelho no meio.
+   Tema claro = Dia; tema escuro = Noite. Cores tiradas das fases da direcao 1c. */
+:root {
+  --ceu-alto: #5cb2f8;  --ceu-meio: #82c8fa;  --ceu-mix: #96d4fb;  --horizonte: #aadefc;
+  --grama: #2eb060;     --grama-e: #1e7c42;   --lago: #5aaaeb;
+  --creme: #fff7e8;     --papel: #fffdf8;     --tinta: #281e28;   --texto: #392810;
+  --suave: #6b5a48;     --laranja: #f28c5a;   --laranja-e: #c8612f; --amarelo: #ffc820;
+  --linha: rgba(57, 40, 16, .14);
+  --casca: #a87046;     --casca-cl: #c08a5a;  --casca-e: #7a4f2e;
+  --codigo: #312831;    --codigo-txt: #fff7e8;
+  --estrela: transparent;
+  --display: 'Fredoka', 'Baloo 2', ui-rounded, 'Arial Rounded MT Bold', system-ui, sans-serif;
+  --corpo: 'Nunito', ui-rounded, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --pixel: 'Press Start 2P', ui-monospace, 'SF Mono', Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ceu-alto: #0e1234;  --ceu-meio: #121840;  --ceu-mix: #171d48;  --horizonte: #1c2250;
+    --grama: #144630;     --grama-e: #0e3222;   --lago: #1e3c6e;
+    --creme: #1b1f45;     --papel: #151a3c;     --tinta: #fff7e8;   --texto: #efe6d2;
+    --suave: #b3a99a;     --laranja: #f7a173;   --laranja-e: #ffbe94; --amarelo: #ffd54a;
+    --linha: rgba(255, 247, 232, .14);
+    --casca: #8a5a36;     --casca-cl: #a8734a;  --casca-e: #5c3a20;
+    --codigo: #0b0e26;    --codigo-txt: #fff7e8;
+    --estrela: #ffffff;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --ceu-alto: #0e1234;  --ceu-meio: #121840;  --ceu-mix: #171d48;  --horizonte: #1c2250;
+  --grama: #144630;     --grama-e: #0e3222;   --lago: #1e3c6e;
+  --creme: #1b1f45;     --papel: #151a3c;     --tinta: #fff7e8;   --texto: #efe6d2;
+  --suave: #b3a99a;     --laranja: #f7a173;   --laranja-e: #ffbe94; --amarelo: #ffd54a;
+  --linha: rgba(255, 247, 232, .14);
+  --casca: #8a5a36;     --casca-cl: #a8734a;  --casca-e: #5c3a20;
+  --codigo: #0b0e26;    --codigo-txt: #fff7e8;
+  --estrela: #ffffff;
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--papel);
+  color: var(--texto);
+  font: 400 17px/1.6 var(--corpo);
+  -webkit-font-smoothing: antialiased;
+}
+img { max-width: 100%; display: block; }
+a { color: inherit; }
+:focus-visible { outline: 3px solid var(--laranja); outline-offset: 3px; border-radius: 6px; }
+h1, h2, h3 { font-family: var(--display); color: var(--tinta); text-wrap: balance; margin: 0; line-height: 1.08; }
+h2 { font-size: clamp(1.9rem, 4.2vw, 2.8rem); font-weight: 700; letter-spacing: -.01em; }
+h3 { font-size: 1.3rem; font-weight: 600; }
+p { margin: 0; }
+.envelope { max-width: 1120px; margin: 0 auto; padding-inline: 20px; }
+.pixel { font-family: var(--pixel); font-size: .62rem; letter-spacing: .04em; line-height: 1.6; }
+
+/* ── Topo: ceu em 4 faixas chapadas, como na placa ─────────────────────── */
+.ceu {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(var(--ceu-alto) 0 22%, var(--ceu-meio) 22% 44%, var(--ceu-mix) 44% 62%, var(--horizonte) 62% 100%);
+  padding-top: env(safe-area-inset-top, 0px);
+}
+.ceu::before {               /* estrelas: so aparecem no tema Noite */
+  content: '';
+  position: absolute; inset: 0 0 30% 0;
+  background-image:
+    radial-gradient(1.5px 1.5px at 8% 18%, var(--estrela) 99%, transparent),
+    radial-gradient(1.5px 1.5px at 23% 9%, var(--estrela) 99%, transparent),
+    radial-gradient(2px 2px at 41% 22%, var(--estrela) 99%, transparent),
+    radial-gradient(1.5px 1.5px at 57% 7%, var(--estrela) 99%, transparent),
+    radial-gradient(1.5px 1.5px at 69% 28%, var(--estrela) 99%, transparent),
+    radial-gradient(2px 2px at 86% 14%, var(--estrela) 99%, transparent),
+    radial-gradient(1.5px 1.5px at 94% 34%, var(--estrela) 99%, transparent),
+    radial-gradient(1.5px 1.5px at 33% 38%, var(--estrela) 99%, transparent);
+  pointer-events: none;
+}
+.barra {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding-block: 18px; position: relative; z-index: 2;
+}
+.marca { display: flex; align-items: center; gap: 10px; text-decoration: none; font: 700 1.35rem var(--display); color: var(--tinta); }
+.marca i { width: 26px; height: 22px; border-radius: 50% 50% 46% 46%; background: var(--casca); box-shadow: inset 0 -4px 0 var(--casca-e); }
+.barra nav { display: flex; gap: 18px; flex-wrap: wrap; font-weight: 700; font-size: .95rem; }
+.barra nav a { text-decoration: none; color: var(--tinta); opacity: .85; }
+.barra nav a:hover { opacity: 1; text-decoration: underline; text-underline-offset: 4px; }
+
+.hero {
+  position: relative; z-index: 1;
+  display: grid; grid-template-columns: 1.1fr .9fr; gap: 40px; align-items: end;
+  padding-block: 28px 0;
+}
+.hero-texto { padding-bottom: 56px; }
+.hero h1 { font-size: clamp(2.6rem, 6.4vw, 4.6rem); font-weight: 700; letter-spacing: -.02em; }
+.hero h1 span { display: block; color: var(--laranja-e); }
+.hero .sub { margin-top: 18px; font-size: 1.18rem; max-width: 34ch; color: var(--tinta); font-weight: 600; }
+.acoes { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 28px; }
+.btn {
+  display: inline-flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 22px;
+  border-radius: 14px; font: 600 1.05rem var(--display); text-decoration: none; cursor: pointer;
+  border: 2px solid var(--tinta); transition: transform .08s;
+}
+.btn:active { transform: translateY(2px); }
+.btn-forte { background: var(--amarelo); color: #281e28; box-shadow: 0 4px 0 var(--tinta); }
+.btn-forte:active { box-shadow: 0 2px 0 var(--tinta); }
+.btn-calmo { background: transparent; color: var(--tinta); }
+.selo { margin-top: 18px; display: inline-flex; gap: 8px; align-items: center; color: var(--tinta); opacity: .8; }
+
+/* o aparelho */
+.aparelho { justify-self: center; position: relative; margin-bottom: -84px; z-index: 3; }
+.casca {
+  width: min(300px, 64vw);
+  background: var(--casca);
+  border-radius: 46px;
+  padding: 22px 20px 26px;
+  box-shadow: inset 0 3px 0 rgba(255,255,255,.25), inset 0 -7px 0 var(--casca-e), 0 28px 40px -24px rgba(20,10,0,.55);
+}
+.casca-topo { display: flex; justify-content: space-between; align-items: center; color: #fff1d6; margin-bottom: 14px; }
+.casca-topo b { font: 700 1rem var(--display); }
+.grelha { display: grid; grid-template-columns: repeat(5, 5px); gap: 4px; }
+.grelha i { width: 5px; height: 5px; border-radius: 50%; background: var(--casca-e); }
+.vidro { background: #120e0c; border-radius: 22px; padding: 10px; }
+.vidro picture { display: block; }
+.vidro img { display: block; width: 100%; height: auto; aspect-ratio: 240 / 284; border-radius: 26px; image-rendering: pixelated; }
+.botoes { display: flex; justify-content: center; gap: 22px; margin-top: 18px; }
+.botoes i { width: 46px; height: 46px; border-radius: 50%; background: var(--amarelo); box-shadow: inset 0 -4px 0 rgba(0,0,0,.25), 0 4px 0 var(--casca-e); }
+.botoes i:nth-child(2) { width: 30px; height: 30px; align-self: center; background: var(--casca-cl); }
+
+.chao { position: relative; height: 120px; background: var(--grama); border-top: 6px solid var(--grama-e); }
+.chao::after {               /* lago */
+  content: ''; position: absolute; right: 9%; top: 26px; width: 150px; height: 34px;
+  border-radius: 50%; background: var(--lago); box-shadow: 0 0 0 3px var(--grama-e);
+}
+.tufos { position: absolute; inset: 0; background-image: radial-gradient(4px 9px at 50% 100%, var(--grama-e) 98%, transparent); background-size: 64px 30px; background-repeat: repeat-x; background-position: 10px 70px; opacity: .9; }
+
+/* ── Secoes ────────────────────────────────────────────────────────────── */
+section { padding-block: 72px; }
+.titulo { display: grid; gap: 12px; max-width: 64ch; margin-bottom: 32px; }
+.titulo p { font-size: 1.12rem; color: var(--suave); }
+.faixa-creme { background: var(--creme); }
+
+/* elenco */
+.elenco { display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 10px; }
+.ficha {
+  background: var(--papel); border: 2px solid var(--linha); border-radius: 16px; padding: 8px 8px 10px;
+  display: grid; gap: 6px; min-width: 0; align-content: start;
+}
+.ficha .quadro { border-radius: 14px; overflow: hidden; aspect-ratio: 1; background: var(--horizonte); }
+.ficha .quadro img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 62%; image-rendering: pixelated; transform: scale(1.7); transform-origin: 50% 62%; }
+.ficha h3 { font-size: 1rem; }
+.fala {
+  position: relative; justify-self: start; background: #fff7ef; color: #392810; border: 2px solid #846952;
+  border-radius: 8px; padding: 5px 7px; font-family: var(--pixel); font-size: .46rem; line-height: 1.7;
+}
+.fala::before { content: ''; position: absolute; left: 14px; top: -8px; border: 6px solid transparent; border-bottom-color: #846952; border-top: 0; }
+
+/* dia inteiro */
+.dia { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; }
+.dia figure { margin: 0; display: grid; gap: 10px; }
+.dia img { width: 100%; height: auto; border-radius: 16px; image-rendering: pixelated; aspect-ratio: 240 / 284; object-fit: cover; }
+.dia figcaption { display: grid; gap: 2px; }
+.dia figcaption b { font: 600 1.05rem var(--display); color: var(--tinta); }
+.dia figcaption span { color: var(--suave); font-size: .9rem; font-variant-numeric: tabular-nums; }
+
+/* vivo */
+.vivo { display: grid; grid-template-columns: .9fr 1.1fr; gap: 48px; align-items: start; }
+.gestos { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.gestos li { display: grid; grid-template-columns: 150px 1fr; gap: 16px; padding: 14px 0; border-bottom: 2px dashed var(--linha); }
+.gestos b { font: 600 1.05rem var(--display); color: var(--tinta); }
+.movs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 28px; }
+.movs span { padding: 6px 12px; border-radius: 999px; background: var(--creme); border: 2px solid var(--linha); font-weight: 700; font-size: .9rem; }
+.telas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.telas figure { margin: 0; display: grid; gap: 8px; }
+.telas img { width: 100%; height: auto; border-radius: 18px; image-rendering: pixelated; }
+.telas figcaption { font-size: .9rem; color: var(--suave); text-align: center; }
+
+/* ciclo */
+.ciclo { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0; position: relative; }
+.ciclo::before { content: ''; position: absolute; left: 6%; right: 6%; top: 60px; height: 4px; background: repeating-linear-gradient(90deg, var(--laranja) 0 10px, transparent 10px 18px); }
+.ciclo li { position: relative; display: grid; justify-items: center; text-align: center; gap: 10px; padding-inline: 8px; }
+.ciclo .bola {
+  width: 120px; height: 120px; border-radius: 28px; background: var(--papel); border: 3px solid var(--laranja);
+  display: grid; place-items: center; overflow: hidden; position: relative; z-index: 1;
+}
+.ciclo .bola img { width: 100%; height: 100%; object-fit: cover; image-rendering: pixelated; }
+.ciclo b { font: 600 1.15rem var(--display); color: var(--tinta); }
+.ciclo span { color: var(--suave); font-size: .95rem; }
+.nota { margin-top: 36px; max-width: 62ch; color: var(--suave); }
+
+/* monte */
+.monte { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+.peca { display: grid; gap: 14px; }
+.lista-hw { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+.passos { counter-reset: p; display: grid; gap: 18px; margin: 0; padding: 0; list-style: none; }
+.passos li { counter-increment: p; display: grid; grid-template-columns: 44px 1fr; gap: 14px; }
+.passos li::before {
+  content: counter(p); width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center;
+  background: var(--amarelo); color: #281e28; font: 700 1.3rem var(--display); border: 2px solid var(--tinta);
+}
+.passos li > div { display: grid; gap: 8px; min-width: 0; }
+pre {
+  margin: 0; background: var(--codigo); color: var(--codigo-txt); border-radius: 14px; padding: 14px 16px;
+  overflow-x: auto; font: 500 .88rem/1.55 ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+}
+
+/* aberto */
+.aberto { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.cartao { background: var(--papel); border: 2px solid var(--linha); border-radius: 22px; padding: 22px; display: grid; gap: 10px; align-content: start; }
+.cartao p { color: var(--suave); }
+.cartao a { font-weight: 800; color: var(--laranja-e); }
+
+footer { background: var(--grama); color: #fff7e8; padding-block: 44px calc(44px + env(safe-area-inset-bottom, 0px)); border-top: 6px solid var(--grama-e); }
+footer .envelope { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 18px; align-items: center; }
+footer a { color: #fff7e8; }
+
+@media (max-width: 1100px) {
+  .elenco { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}
+@media (max-width: 940px) {
+  .hero { grid-template-columns: 1fr; gap: 10px; }
+  .hero-texto { padding-bottom: 20px; }
+  .vivo, .monte { grid-template-columns: 1fr; }
+  .dia { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .aberto { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+  body { font-size: 16px; }
+  section { padding-block: 48px; }
+  .barra nav { display: none; }
+  .hero h1 { font-size: 2.3rem; }
+  .hero .sub { font-size: 1.05rem; }
+  .aparelho { margin-bottom: -60px; }
+  .casca { width: min(230px, 62vw); border-radius: 34px; padding: 14px 13px 16px; }
+  .casca-topo { margin-bottom: 8px; }
+  .botoes { margin-top: 10px; } .botoes i { width: 34px; height: 34px; } .botoes i:nth-child(2) { width: 22px; height: 22px; }
+  .chao { height: 80px; }
+  .elenco { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .fala { display: none; }
+  .ficha h3 { font-size: .9rem; text-align: center; }
+  .dia { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .dia img { border-radius: 10px; }
+  .dia figcaption b { font-size: .9rem; } .dia figcaption span { font-size: .78rem; }
+  .telas { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .telas img { border-radius: 10px; } .telas figcaption { font-size: .78rem; }
+  .gestos li { padding: 10px 0; }
+  .movs span { font-size: .8rem; padding: 4px 10px; }
+  .ciclo { grid-template-columns: 1fr; gap: 18px; }
+  .ciclo::before { left: 49px; right: auto; top: 0; bottom: 0; width: 4px; height: auto; background: repeating-linear-gradient(180deg, var(--laranja) 0 10px, transparent 10px 18px); }
+  .ciclo .bola { width: 100px; height: 100px; border-radius: 22px; }
+  .ciclo li { grid-template-columns: 100px 1fr; justify-items: start; text-align: left; align-items: center; column-gap: 16px; row-gap: 0; }
+  .ciclo li .bola { grid-row: span 2; }
+  .gestos li { grid-template-columns: 1fr; gap: 2px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .btn { transition: none; }
+}
+</style>
+</head>
+<body>
+
+<header class="ceu">
+  <div class="envelope barra">
+    <a class="marca" href="#inicio"><i aria-hidden="true"></i>Capigoshi</a>
+    <nav aria-label="Seções">
+      <a href="#elenco">Elenco</a>
+      <a href="#vivo">Como ele vive</a>
+      <a href="#ciclo">Do ovo à estrela</a>
+      <a href="#monte">Monte o seu</a>
+    </nav>
+  </div>
+
+  <div class="envelope hero" id="inicio">
+    <div class="hero-texto">
+      <p class="pixel" style="color:var(--tinta);opacity:.75;margin-bottom:18px">bichinho virtual · código aberto</p>
+      <h1>Um bichinho que mora <span>numa plaquinha.</span></h1>
+      <p class="sub">Nasce de um ovo, dança, fala com voz de minion, leva susto com barulho e, um dia, vira estrela no céu.</p>
+      <div class="acoes">
+        <a class="btn btn-forte" href="#monte">Montar o meu</a>
+        <a class="btn btn-calmo" href="https://github.com/rjcaubit/capigoshi" rel="noopener">Ver o código</a>
+      </div>
+      <p class="selo pixel">MicroPython · MIT · sem imagens, só código</p>
+    </div>
+
+    <div class="aparelho">
+      <div class="casca">
+        <div class="casca-topo"><b>capigoshi</b><span class="grelha" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span></div>
+        <div class="vidro">
+          <picture>
+            <source srcset="img/elenco_capi.png" media="(prefers-reduced-motion: reduce)">
+            <img src="img/capigoshi-vivo.webp" width="480" height="568" alt="Na tela da placa, a capivara Capi dança com notas musicais, dá uma cambalhota e comemora com confete">
+          </picture>
+        </div>
+        <div class="botoes" aria-hidden="true"><i></i><i></i><i></i></div>
+      </div>
+    </div>
+  </div>
+  <div class="chao" aria-hidden="true"><div class="tufos"></div></div>
+</header>
+
+<main>
+  <section id="elenco" class="faixa-creme">
+    <div class="envelope">
+      <div class="titulo">
+        <h2>Nove amigos, vários desenhados por criança.</h2>
+        <p>O Pato de chapéu de bruxo e o Elefante de orelhas cor-de-rosa vieram de desenhos feitos à mão. Os traços foram mantidos, sem "correção". Cada um tem 5 olhares, 6 bocas, versão doente e frases próprias.</p>
+      </div>
+      <div class="elenco">
+        <article class="ficha"><div class="quadro"><img src="img/elenco_capi.png" alt="Capi, a capivara de fones de ouvido"></div><h3>Capi</h3><span class="fala">meus fones sao novos</span></article>
+        <article class="ficha"><div class="quadro"><img src="img/elenco_elefante.png" alt="Elefante cinza de orelhas rosa cheirando uma flor"></div><h3>Elefante</h3><span class="fala">nunca esqueco nada</span></article>
+        <article class="ficha"><div class="quadro"><img src="img/elenco_pato.png" alt="Pato amarelo de chapéu roxo de bruxo girando"></div><h3>Pato</h3><span class="fala">meu chapeu e magico</span></article>
+        <article class="ficha"><div class="quadro"><img src="img/elenco_polvo.png" alt="Polvo roxo rindo"></div><h3>Polvo</h3><span class="fala">tenho 8 abracos!</span></article>
+        <article class="ficha"><div class="quadro"><img src="img/elenco_calopsita.png" alt="Calopsita amarela dançando"></div><h3>Calopsita</h3><span class="fala">fiu fiu!</span></article>
+        <article class="ficha"><div class="quadro"><img src="img/elenco_cachorro.png" alt="Caramelo, o cachorro, comemorando"></div><h3>Caramelo</h3><span class="fala">joga a bola!</span></article>
+        <article class="ficha"><div class="quadro"><img src="img/elenco_gato.png" alt="Gato preto se espreguiçando"></div><h3>Gato</h3><span class="fala">nao me perturbe</span></article>
+        <article class="ficha"><div class="quadro"><img src="img/elenco_et.png" alt="ET verde de três olhos com soluço"></div><h3>ET</h3><span class="fala">leve-me ao seu lider</span></article>
+        <article class="ficha"><div class="quadro"><img src="img/elenco_sapinho.png" alt="Sapinho verde pulando"></div><h3>Sapinho</h3><span class="fala">pula comigo!</span></article>
+      </div>
+    </div>
+  </section>
+
+  <section id="dia">
+    <div class="envelope">
+      <div class="titulo">
+        <h2>Um dia inteiro no bolso.</h2>
+        <p>Seis fases de céu, com o sol nascendo às 6h e se pondo às 18h, lua, estrelas e nuvens. O dia segue o relógio de verdade ou passa em 10, 15 ou 30 minutos. Ele come às 7h, nada no lago depois do almoço, vê o pôr do sol e dorme das 22h às 6h.</p>
+      </div>
+      <div class="dia">
+        <figure><img src="img/fase_madrugada.png" alt="Cena de madrugada"><figcaption><b>Madrugada</b><span>0h – 5h</span></figcaption></figure>
+        <figure><img src="img/fase_amanhecer.png" alt="Cena de amanhecer"><figcaption><b>Amanhecer</b><span>5h – 7h</span></figcaption></figure>
+        <figure><img src="img/fase_dia.png" alt="Cena de dia"><figcaption><b>Dia</b><span>7h – 17h</span></figcaption></figure>
+        <figure><img src="img/fase_pordosol.png" alt="Cena de pôr do sol"><figcaption><b>Pôr do sol</b><span>17h – 18h30</span></figcaption></figure>
+        <figure><img src="img/fase_crepusculo.png" alt="Cena de crepúsculo"><figcaption><b>Crepúsculo</b><span>18h30 – 20h</span></figcaption></figure>
+        <figure><img src="img/fase_noite.png" alt="Cena de noite"><figcaption><b>Noite</b><span>20h – 24h</span></figcaption></figure>
+      </div>
+    </div>
+  </section>
+
+  <section id="vivo" class="faixa-creme">
+    <div class="envelope vivo">
+      <div>
+        <div class="titulo" style="margin-bottom:24px">
+          <h2>Ele não fica parado esperando.</h2>
+          <p>Entre um movimento e outro ele respira, sorteia o que fazer conforme a hora e às vezes puxa conversa. E reage a você.</p>
+        </div>
+        <ul class="gestos">
+          <li><b>Tocar nele</b><span>Ri, comemora e agradece o carinho. Cinco toques seguidos: "chega de cosquinha!"</span></li>
+          <li><b>Segurar e arrastar</b><span>Colo. Ele estica, arregala os olhos e pede para descer.</span></li>
+          <li><b>Sacudir a placa</b><span>Grita, chacoalha e fica tonto, com estrelinhas girando.</span></li>
+          <li><b>Fazer barulho</b><span>Leva susto e olha em volta. Dormindo, acorda por um minuto.</span></li>
+          <li><b>Esquecer dele</b><span>Depois de 10 minutos sem atenção, chora e chama. Um toque vira festa.</span></li>
+        </ul>
+        <div class="movs" aria-label="Os 21 movimentos">
+          <span>andar</span><span>olhar em volta</span><span>espreguiçar</span><span>bocejar</span><span>dançar</span><span>girar</span><span>comemorar</span><span>tropeçar</span><span>tremer de frio</span><span>cochilar</span><span>espirrar</span><span>soluço</span><span>rir</span><span>chorar</span><span>levar susto</span><span>ficar tonto</span><span>chegar perto do vidro</span><span>esconder</span><span>cavar</span><span>cheirar flor</span><span>cambalhota</span>
+        </div>
+      </div>
+      <div class="telas">
+        <figure><img src="img/tela_vida_colo.png" alt="Gato no colo, suspenso no ar, dizendo me solta"><figcaption>No colo</figcaption></figure>
+        <figure><img src="img/tela_conversa_1.png" alt="Sapinho visitando a Capi e dizendo oi, Capi"><figcaption>Visita do vizinho</figcaption></figure>
+        <figure><img src="img/tela_pet_chamado_fome.png" alt="Pato com fome pedindo capim no modo Cuidar"><figcaption>Pedindo comida</figcaption></figure>
+        <figure><img src="img/tela_passear_auto.png" alt="Caramelo andando no modo Passear e pegando moedas"><figcaption>Passear</figcaption></figure>
+        <figure><img src="img/tela_menu_aberto_sim.png" alt="Menu de ajustes puxado do topo"><figcaption>Menu puxado do topo</figcaption></figure>
+        <figure><img src="img/tela_vida_estrela.png" alt="Céu da noite com a estrela do Pato"><figcaption>A estrela do Pato</figcaption></figure>
+      </div>
+    </div>
+  </section>
+
+  <section id="ciclo">
+    <div class="envelope">
+      <div class="titulo">
+        <h2>Do ovo à estrela.</h2>
+        <p>Cada bichinho tem uma vida só dele, sorteada quando o ovo aparece.</p>
+      </div>
+      <ol class="ciclo">
+        <li><span class="bola"><img src="img/ciclo_ovo.png?v=2" alt="Ovo da Capi, já rachando"></span><b>Ovo</b><span>10 minutos. Tocar aquece.</span></li>
+        <li><span class="bola"><img src="img/ciclo_filhote.png?v=2" alt="Capi filhote, pequenininha"></span><b>Filhote</b><span>3 dias, pequenininho</span></li>
+        <li><span class="bola"><img src="img/ciclo_adulto.png?v=2" alt="Capi adulta"></span><b>Adulto</b><span>15 a 32 dias</span></li>
+        <li><span class="bola"><img src="img/ciclo_idoso.png?v=2" alt="Capi idosa, de sobrancelhas brancas e bengala"></span><b>Idoso</b><span>5 dias, de bengala</span></li>
+        <li><span class="bola"><img src="img/ciclo_estrela.png?v=2" alt="Céu da noite com a estrela da Capi e o nome dela"></span><b>Estrela</b><span>Numa noite, com o nome no céu</span></li>
+      </ol>
+      <p class="nota">Acima, a mesma Capi a vida inteira. Ao todo são de 23 a 40 dias. Na hora Simulada, o ciclo inteiro cabe numa tarde. De manhã aparece um ovo novo, e as estrelas dos que já foram continuam brilhando à noite.</p>
+    </div>
+  </section>
+
+  <section id="monte" class="faixa-creme">
+    <div class="envelope monte">
+      <div class="peca">
+        <h2>Monte o seu.</h2>
+        <p>Não precisa soldar nada. Tudo cabe numa placa de bolso com tela, sensores e alto-falante.</p>
+        <ul class="lista-hw">
+          <li><a href="https://www.waveshare.com/wiki/ESP32-S3-Touch-LCD-1.83" rel="noopener">Waveshare ESP32-S3-Touch-LCD-1.83</a>: tela touch de 240 × 284, acelerômetro, microfone, alto-falante, relógio e chip de bateria</li>
+          <li>Bateria de lítio (opcional): o relógio não perde a hora, e a tela avisa quando chega a 10%</li>
+          <li>Cabo USB-C e um computador com Python 3</li>
+        </ul>
+      </div>
+      <ol class="passos">
+        <li><div><h3>Instale as ferramentas</h3><pre>pip install esptool mpremote</pre></div></li>
+        <li><div><h3>Coloque a placa em modo de gravação</h3><p>Segure BOOT, aperte e solte RST, solte BOOT.</p></div></li>
+        <li><div><h3>Grave</h3><pre>bash deploy.sh</pre><p>O script baixa o MicroPython, grava, copia o jogo e acerta o relógio com a hora do computador. Sem internet na placa.</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <section id="aberto">
+    <div class="envelope">
+      <div class="titulo">
+        <h2>Código aberto, do jeito certo.</h2>
+        <p>Licença MIT. Sons de terceiros com licença conferida. Uma prévia que roda o firmware de verdade no computador e serve de teste.</p>
+      </div>
+      <div class="aberto">
+        <div class="cartao"><h3>Ver sem a placa</h3><p>A pasta <code>previa/</code> roda o firmware no MicroPython do computador, com o hardware simulado, e gera as telas em PNG. Todas as imagens desta página saíram de lá.</p></div>
+        <div class="cartao"><h3>Mande um personagem</h3><p>Personagens desenhados por crianças são o coração do projeto. O guia de contribuição mostra como transformar um desenho em código.</p><p><a href="https://github.com/rjcaubit/capigoshi/blob/main/CONTRIBUTING.md" rel="noopener">Como contribuir</a></p></div>
+        <div class="cartao"><h3>Créditos</h3><p>Sons da Kenney (CC0) e do Pixabay (baixados por você, nunca redistribuídos). MicroPython (MIT). Fontes Fredoka, Nunito e Press Start 2P (OFL).</p></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="envelope">
+    <span class="pixel">capigoshi · feito com MicroPython e carinho</span>
+    <span>Licença MIT</span>
+  </div>
+</footer>
+</body>
+</html>
