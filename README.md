@@ -10,6 +10,7 @@
 </p>
 
 <p align="center">
+  <a href="https://capigoshi.pages.dev">Site</a> ·
   <a href="#começando">Começando</a> ·
   <a href="#como-brincar">Como brincar</a> ·
   <a href="#ver-sem-a-placa">Ver sem a placa</a> ·
