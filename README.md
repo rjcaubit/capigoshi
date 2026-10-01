@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://capigoshi.pages.dev">Site</a> ·
+  <a href="https://capigoshi.mundocapi.com">Site</a> ·
   <a href="#começando">Começando</a> ·
   <a href="#como-brincar">Como brincar</a> ·
   <a href="#ver-sem-a-placa">Ver sem a placa</a> ·
@@ -62,7 +62,7 @@ retângulos, triângulos e texto 8 × 8. Não há nenhuma imagem guardada na pla
 
 Os personagens, os movimentos e as ações do Capigoshi foram criados pelo João, de 9 anos. O código só
 traduziu cada traço do desenho dele para a tela, sem corrigir nada. Veja cada desenho ao lado do bichinho
-que ele virou [na página do projeto](https://capigoshi.pages.dev/#joao).
+que ele virou [na página do projeto](https://capigoshi.mundocapi.com/#joao).
 
 <p align="center"><img src="docs/img/joao-desenhos.jpg" width="520" alt="Os desenhos originais do João: sapinho, calopsita, polvo, cachorro, gato, aquário, ET, elefante e pato"></p>
 
