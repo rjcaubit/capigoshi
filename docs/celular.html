@@ -3626,7 +3626,8 @@ window.CapiR=m1.exports;window.CapiV=m2.exports;})();</script>
     var W = window.innerWidth,
       H = window.innerHeight,
       app = $('app');
-    var moldura = W > 620 && W > H * .8; // no computador mostra numa moldura de celular 390×844
+    var toque = 'ontouchstart' in window || navigator.maxTouchPoints > 0 || (window.matchMedia && matchMedia('(pointer: coarse)').matches);
+    var moldura = !toque && W > 620 && W > H * .8; // no computador mostra numa moldura de celular 390×844
     var aw = W,
       ah = H;
     $('girar').style.display = moldura ? 'block' : 'none';
