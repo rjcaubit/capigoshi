@@ -33,17 +33,17 @@
   --track:#2a3068; color-scheme:dark;
 }
 *,*::before,*::after{box-sizing:border-box;}
-html,body{margin:0;padding:0;min-height:100dvh;
+html,body{margin:0;padding:0;height:100dvh;overflow:hidden;
   background:radial-gradient(120% 80% at 50% 0%,var(--bg) 0%,var(--bg-deep) 100%) fixed,var(--bg);
   color:var(--ink);font-family:'Fredoka',system-ui,sans-serif;font-size:15px;}
 button{font:inherit;color:inherit;cursor:pointer;}
 button:focus-visible{outline:3px solid var(--focus);outline-offset:2px;}
-.pagina{display:flex;flex-direction:column;align-items:center;padding:16px 16px 32px;gap:16px;}
+.pagina{display:flex;flex-direction:column;align-items:stretch;height:100dvh;padding:0;gap:0;}
 .shell{
+  flex:1;display:flex;flex-direction:column;align-items:center;
   background:linear-gradient(165deg,var(--shell-hi) 0%,var(--shell) 45%,var(--shell-dark) 100%);
-  border-radius:40px;padding:20px 20px 18px;
-  box-shadow:inset 0 2px 0 rgba(255,255,255,.28),inset 0 -5px 0 rgba(0,0,0,.28),0 30px 50px -22px rgba(30,18,6,.7);
-  display:flex;flex-direction:column;align-items:center;gap:14px;width:100%;max-width:340px;
+  border-radius:0;padding:env(safe-area-inset-top,10px) 16px 10px;
+  gap:10px;width:100%;
 }
 .cabeca{display:flex;align-items:center;justify-content:space-between;width:100%;color:rgba(255,240,210,.85);}
 .cabeca b{font-family:'Fredoka',sans-serif;font-weight:700;letter-spacing:.02em;font-size:1.1rem;}
@@ -54,25 +54,30 @@ button:focus-visible{outline:3px solid var(--focus);outline-offset:2px;}
 }
 .btn-engrenagem:active{background:rgba(0,0,0,.2);}
 .tela{
-  background:var(--screen-bezel);border-radius:16px;padding:12px;position:relative;
-  box-shadow:inset 0 0 0 1px rgba(255,255,255,.06),inset 0 8px 20px rgba(0,0,0,.6);width:100%;
+  background:var(--screen-bezel);border-radius:12px;padding:8px;position:relative;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.06),inset 0 8px 20px rgba(0,0,0,.6);
+  flex:1;display:flex;align-items:center;justify-content:center;width:100%;
 }
-.tela canvas{display:block;image-rendering:pixelated;width:100%;aspect-ratio:240/284;height:auto;touch-action:manipulation;border-radius:4px;}
-.tela #overlay{position:absolute;inset:12px;width:calc(100% - 24px);height:calc(100% - 24px);pointer-events:none;border-radius:4px;}
-.botoes-shell{display:flex;gap:20px;}
+.tela canvas{display:block;image-rendering:pixelated;height:100%;aspect-ratio:240/284;width:auto;max-width:100%;touch-action:manipulation;border-radius:4px;}
+.tela #overlay{position:absolute;inset:8px;width:calc(100% - 16px);height:calc(100% - 16px);pointer-events:none;border-radius:4px;}
+.botoes-shell{display:flex;gap:20px;flex-shrink:0;}
 .btn-fisico{
-  width:68px;height:68px;min-height:44px;border-radius:50%;border:0;
+  width:64px;height:64px;min-height:44px;border-radius:50%;border:0;
   background:radial-gradient(circle at 35% 30%,#ffe27a,var(--sun) 55%,#d9a30e 100%);
   color:var(--sun-ink);font-family:'Fredoka',sans-serif;font-weight:700;font-size:.85rem;line-height:1.1;
   box-shadow:inset 0 -4px 0 rgba(0,0,0,.25),inset 0 2px 0 rgba(255,255,255,.5),0 6px 10px -4px rgba(0,0,0,.6);
   transition:transform .05s;
 }
 .btn-fisico:active{transform:translateY(3px);box-shadow:inset 0 -1px 0 rgba(0,0,0,.25),inset 0 2px 0 rgba(255,255,255,.4);}
-.controles{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center;}
+.controles{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center;flex-shrink:0;
+  padding:6px 16px env(safe-area-inset-bottom,8px);
+  background:var(--bg-deep);width:100%;
+}
 .controles span{color:var(--ink-soft);font-size:.9rem;font-weight:600;}
 .chip{
   border:1px solid var(--panel-line);background:var(--chip);border-radius:999px;
-  min-height:40px;padding:0 16px;font-family:'Fredoka',sans-serif;font-weight:500;font-size:.95rem;
+  min-height:36px;padding:0 14px;font-family:'Fredoka',sans-serif;font-weight:500;font-size:.9rem;
   transition:background .12s,color .12s;
 }
 .chip.on{background:var(--chip-on);color:var(--chip-on-ink);border-color:var(--grass-dark);}
