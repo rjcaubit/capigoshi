@@ -3562,6 +3562,7 @@ window.CapiR=m1.exports;window.CapiV=m2.exports;})();</script>
     }, ms);
   };
   window.onerror = function (m, f, l) {
+    if (!l || /^Script error/i.test(m)) return; // erro de script de fora (extensão do navegador), sem detalhe
     aviso('erro: ' + m + ' (' + l + ')');
   };
   var CH = R.CHAR_ORDER,
