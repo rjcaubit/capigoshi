@@ -85,6 +85,8 @@ CAR = (214, 148, 78); CAR_ESC = (160, 98, 44); CAR_CL = (252, 224, 182); CAR_ORE
 GATO = (58, 54, 70); GATO_CL = (226, 222, 234); GATO_IRIS = (200, 232, 90)
 ET = (112, 200, 92); ET_ESC = (58, 138, 62); ET_CL = (190, 240, 120)
 SAPO = (150, 200, 56); SAPO_ESC = (96, 146, 36); SAPO_CL = (214, 232, 140)
+NAU = (234, 168, 116); NAU_ESC = (194, 122, 76); NAU_CABELO = (107, 62, 30); NAU_BARBA = (138, 90, 50)
+NAU_CAMISA = (236, 226, 200); NAU_SHORT = (64, 98, 170)
 
 
 # ------------------------------------------------------------ primitivas
@@ -274,13 +276,20 @@ def arvore(x, y, c, tam, ol=False):
     ell(x, y - tam - 6, tam * 0.8, tam * 0.7, c)
 
 
-def ceu(ph, hora, t):
+def ceu(ph, hora, t, wx=None):
+    """wx = clima de verdade (dict de 0 a 1: nuvem, chuva, neve, raio, neblina, vento) ou None."""
     b = ph['ceu']
+    cinza = 0
+    if wx:
+        cinza = min(0.8, wx['nuvem'] * 0.45 + wx['chuva'] * 0.3 + wx['raio'] * 0.4 + wx['neblina'] * 0.35)
+        if cinza > 0.05:
+            alvo = (58, 62, 84) if ph['estrelas'] else (132, 140, 154)
+            b = (mistura(b[0], alvo, cinza), mistura(b[1], alvo, cinza), mistura(b[2], alvo, cinza))
     faixas = (b[0], b[1], mistura(b[1], b[2]), b[2])
     cortes = (0, 60, 110, 150, GROUND)
     for i in range(4):
         rect(0, cortes[i], W, cortes[i + 1] - cortes[i], faixas[i])
-    if ph['estrelas']:
+    if ph['estrelas'] and cinza < 0.4:
         for i in range(30):
             f = (t // (380 + i * 61) + i * 7) % (3 + i % 3)
             if f:
@@ -288,7 +297,9 @@ def ceu(ph, hora, t):
                 px(sx, sy, BRANCO)
                 if i % 4 == 0 and f > 1:
                     px(sx + 1, sy, BRANCO); px(sx, sy + 1, BRANCO)
-    if NASCER_SOL <= hora < POR_SOL:
+    if cinza > 0.6:
+        pass                                         # ceu fechado: nem sol nem lua
+    elif NASCER_SOL <= hora < POR_SOL:
         a = (hora - NASCER_SOL) / (POR_SOL - NASCER_SOL) * math.pi
         x, y = ri(120 - 100 * math.cos(a)), ri(170 - 105 * math.sin(a))
         sol = (255, 220, 60)
@@ -299,7 +310,12 @@ def ceu(ph, hora, t):
         ell(x, y, 15, 15, claro(b[0], 0.12))
         ell(x, y, 9, 9, (240, 240, 220))
         ell(x + 4, y - 3, 8, 8, b[0])
-    if not ph['estrelas']:
+    if wx and wx['nuvem'] > 0.15:
+        c = mistura(claro(b[1], 0.5), (96, 100, 116), min(0.7, wx['chuva'] * 0.4 + wx['raio'] * 0.5))
+        v = 1 + wx['vento'] * 3
+        for i in range(2 + ri(wx['nuvem'] * 4)):
+            nuvem(ri((t / (220 + i * 37) * v + i * 97) % (W + 80)) - 40, 40 + (i * 23) % 58, c)
+    elif not ph['estrelas']:
         c = claro(b[1], 0.6)
         nuvem(ri((t / 220) % (W + 80)) - 40, 46, c)
         nuvem(ri((t / 300 + 150) % (W + 80)) - 40, 72, c)
@@ -310,6 +326,11 @@ def ceu(ph, hora, t):
     neve = claro(longe, 0.5)
     poly(125, GROUND - 66, (0, 0, -7, 9, 7, 9), neve)
     poly(40, GROUND - 52, (0, 0, -6, 7, 6, 7), neve)
+    if wx and wx['neblina'] > 0.3:                   # neblina: faixas de nevoa na frente das montanhas
+        nev = mistura(b[2], BRANCO, 0.55)
+        for i in range(5):
+            x = ri((t / (900 + i * 210) + i * 61) % 60) - 60
+            rrect(x + (i % 2) * 40, 132 + i * 12, W + 60, 7, 3, nev)
     ell(40, GROUND + 8, 90, 24, perto)
     ell(200, GROUND + 10, 80, 20, perto)
 
@@ -330,6 +351,77 @@ def chao(ph, t):
 def cena(ph, hora, t):
     ceu(ph, hora, t)
     chao(ph, t)
+
+
+def tempo(wx, t, ate=224):
+    """Chuva, neve, vento, neblina e raio por cima da cena (ate a linha `ate`)."""
+    n = int(wx['chuva'] * 44)
+    if n:
+        inc = 0.12 + wx['vento'] * 0.5
+        for i in range(n):
+            y = (i * 71 + t * (0.26 + (i % 5) * 0.03)) % ate
+            x = (i * 37 + y * inc) % W
+            linha(x, y, x + inc * 5, min(ate - 1, y + 5), (206, 224, 246))
+    n = int(wx['neve'] * 40)
+    for i in range(n):
+        y = (i * 67 + t * 0.03 * (1 + (i % 3) * 0.3)) % ate
+        x = (i * 41 + math.sin(t / 900 + i) * 6 + t * wx['vento'] * 0.03) % W
+        rect(x, y, 2, 2, BRANCO)
+    for i in range(int(wx['vento'] * 8)):
+        x = (i * 83 + t * 0.25) % (W + 40) - 20
+        hl(x, 44 + (i * 47) % 150, 8 + (i % 3) * 4, CREME)
+    if wx['raio'] > 0.3:
+        f = t % 9000
+        if f < 110 or 200 < f < 270:
+            x, y = 40 + (t // 9000 * 67) % 150, 18
+            for dx, dy in ((-8, 26), (6, 22), (-10, 30), (4, 26)):
+                linha(x, y, x + dx, y + dy, (255, 250, 200)); linha(x + 1, y, x + dx + 1, y + dy, (255, 250, 200))
+                x, y = x + dx, y + dy
+
+
+def presente(tipo, x, y, t):
+    """Presente de um amigo no gramado; y = chao. Tipos: caixa, flor, coracao, estrela, bola, capim."""
+    ell(x, y + 1, 7, 2, (30, 110, 60))
+    if tipo == 'flor':
+        vl(x, y - 9, 9, (40, 140, 70))
+        for dx, dy in ((-3, 0), (3, 0), (0, -3), (0, 3)):
+            ell(x + dx, y - 10 + dy, 2.5, 2.5, (244, 130, 170))
+        ell(x, y - 10, 1.8, 1.8, AMARELO)
+    elif tipo == 'coracao':
+        coracao(x, y - 9 - (t // 400) % 2)
+    elif tipo == 'estrela':
+        poly(x, y - 7, (0, -7, 2, -2, 7, 0, 2, 2, 0, 7, -2, 2, -7, 0, -2, -2), OL(AMARELO))
+        poly(x, y - 7, (0, -6, 1.5, -1.5, 6, 0, 1.5, 1.5, 0, 6, -1.5, 1.5, -6, 0, -1.5, -1.5), AMARELO)
+    elif tipo == 'bola':
+        icone_botao(1, x, y - 7)
+    elif tipo == 'capim':
+        capim(x, y, (20, 100, 50), 1.1); capim(x + 4, y, (30, 124, 66), 0.8)
+    else:
+        rect(x - 7, y - 11, 14, 11, OL(VERMELHO)); rect(x - 6, y - 10, 12, 9, VERMELHO)
+        rect(x - 1, y - 10, 2, 9, AMARELO); rect(x - 6, y - 7, 12, 2, AMARELO)
+        ell(x - 3, y - 13, 3, 2, AMARELO); ell(x + 3, y - 13, 3, 2, AMARELO)
+
+
+def tela_wifi(qr, linhas, celular=False):
+    """Tela de configurar o Wi-Fi: QR de entrar na rede da placa e o passo a passo."""
+    rect(0, 0, W, H, TRAY)
+    centro('Wi-Fi do bichinho', 14, CREME)
+    n = len(qr)
+    k = 144 // n
+    lado = n * k
+    x0, y0 = (W - lado) // 2, 36
+    rrect(x0 - 10, y0 - 10, lado + 20, lado + 20, 8, BRANCO)
+    for j in range(n):
+        v = qr[j]
+        for i in range(n):
+            if v >> (n - 1 - i) & 1:
+                _fb.fill_rect(x0 + i * k, y0 + j * k, k, k, 0)
+    if celular:
+        rrect(x0 + lado // 2 - 22, y0 + lado // 2 - 12, 44, 24, 6, ACC)
+        centro('OK!', y0 + lado // 2 - 4, INK)
+    y = y0 + lado + 18
+    for i, s in enumerate(linhas):
+        centro(s, y + i * 12, ACC if s.startswith('>') else CREME)
 
 
 # ------------------------------------------------------------ personagens
@@ -681,11 +773,37 @@ def sapinho(cx, pe, olhos, boca, doente, s, ol):
     return pe - 46 * s, pe - 88 * s, 35 * s, [(cx + ox * s, pe + oy * s) for ox, oy, _ in ((-15, -74, 9.5), (15, -74, 9.5))]
 
 
-ELENCO = ('capi', 'elefante', 'pato', 'polvo', 'calopsita', 'cachorro', 'gato', 'et', 'sapinho')
+def naufrago(cx, pe, olhos, boca, doente, s, ol):
+    """O cara da ilha do Companion (companion.mundocapi.com): cabelo e barba de naufrago,
+    camisa rasgada e short azul."""
+    E, P, R, A = _rel(cx, pe, s, ol, lambda c: NAU_ESC if c == NAU else None)
+    E(-10, -2, 8, 4, NAU_ESC, 1); E(10, -2, 8, 4, NAU_ESC, 1)                # pes descalcos
+    E(0, -17, 24, 15, NAU_SHORT, 1)
+    E(0, -37, 26, 25, NAU_CAMISA, 1)
+    P(0, -17, (-23, -6, -16, 5, -9, -3, 0, 6, 9, -3, 16, 5, 23, -6), NAU_CAMISA)   # barra rasgada
+    P(0, -58, (-7, 0, 7, 0, 0, 11), NAU)                                     # gola aberta
+    E(-23, -36, 6, 11, NAU, 1); E(23, -36, 6, 11, NAU, 1)                    # bracos
+    E(0, -78, 31, 26, NAU_CABELO, 1)
+    P(-9, -100, (-7, 6, 7, 6, -4, -9), NAU_CABELO); P(7, -101, (-7, 7, 7, 7, 6, -9), NAU_CABELO)
+    E(0, -71, 25, 21, NAU)
+    E(0, -58, 19, 11, NAU_BARBA)
+    E(0, -59, 8, 5.5, NAU)                                                   # boca no meio da barba
+    P(0, -90, (-16, 0, -6, 8, 0, 1, 8, 9, 17, 0), NAU_CABELO)                # franja
+    bc = ENJOADA if doente else (240, 150, 130)
+    E(-19, -68, 5, 3, bc); E(19, -68, 5, 3, bc)
+    _olhos(E, R, A, ((-10, -76, 6), (10, -76, 6)), olhos, PRETO, NAU)
+    E(0, -67, 3, 2.5, NAU_ESC)
+    _boca(E, A, boca, 0, -61, 0.8, PRETO)
+    if doente:
+        termometro(cx + 32 * s, pe - 60 * s)
+    return pe - 74 * s, pe - 106 * s, 31 * s, [(cx + ox * s, pe + oy * s) for ox, oy, _ in ((-10, -76, 6), (10, -76, 6))]
+
+
+ELENCO = ('capi', 'elefante', 'pato', 'polvo', 'calopsita', 'cachorro', 'gato', 'et', 'sapinho', 'naufrago')
 NOMES = {'capi': 'Capi', 'pato': 'Pato', 'elefante': 'Elefante', 'polvo': 'Polvo', 'calopsita': 'Calopsita',
-         'cachorro': 'Caramelo', 'gato': 'Gato', 'et': 'ET', 'sapinho': 'Sapinho'}
+         'cachorro': 'Caramelo', 'gato': 'Gato', 'et': 'ET', 'sapinho': 'Sapinho', 'naufrago': 'Naufrago'}
 _FUNCS = {'capi': capi, 'pato': pato, 'elefante': elefante, 'polvo': polvo, 'calopsita': calopsita,
-          'cachorro': cachorro, 'gato': gato, 'et': et, 'sapinho': sapinho}
+          'cachorro': cachorro, 'gato': gato, 'et': et, 'sapinho': sapinho, 'naufrago': naufrago}
 
 
 FASES_VIDA = ('ovo', 'filhote', 'adulto', 'idoso', 'estrela')
@@ -751,7 +869,7 @@ def sombra(cx, ph, rx=20):
 # ------------------------------------------------------------ personagem vivo (movimentos e efeitos)
 olhos_ult = []
 HTOP = {'capi': 77, 'pato': 95, 'elefante': 75, 'polvo': 71, 'calopsita': 84, 'cachorro': 75,
-        'gato': 75, 'et': 81, 'sapinho': 65}
+        'gato': 75, 'et': 81, 'sapinho': 65, 'naufrago': 79}
 AZUL_L = (110, 180, 250)
 
 
@@ -1149,10 +1267,11 @@ def alca():
 
 
 def menu(borda, modo, id, hora_modo, vel, relogio, som_ligado, pendente=None, confirma=None,
-         legenda='', fase='adulto'):
+         legenda='', fase='adulto', wifi=1):
     """Painel de ajustes com a borda de baixo em y = borda (0 a 272).
     pendente = personagem escolhido nas setas e ainda nao confirmado;
-    confirma = 'trocar' ou 'zerar' mostra a pergunta 'comeca do zero' no lugar da hora."""
+    confirma = 'trocar' ou 'zerar' mostra a pergunta 'comeca do zero' no lugar da hora;
+    wifi = barrinhas do canto (tocar nelas abre o Wi-Fi): 0 sem rede, 1 configurada, 2 internet ok."""
     o = borda - MENU_FUNDO                     # tudo desce junto com o painel
     rect(0, o, W, MENU_FUNDO - 10, TRAY)
     rrect(0, o + MENU_FUNDO - 22, W, 22, 10, TRAY)
@@ -1163,7 +1282,7 @@ def menu(borda, modo, id, hora_modo, vel, relogio, som_ligado, pendente=None, co
     if not som_ligado:
         linha(194, o + 22, 211, o + 9, VERMELHO)
     for i in range(3):
-        rect(36 + i * 4, o + 19 - i * 3, 3, 3 + i * 3, CREME if i < 2 else MUTEDM)
+        rect(36 + i * 4, o + 19 - i * 3, 3, 3 + i * 3, CREME if i < (0, 2, 3)[wifi] else MUTEDM)
     texto('modo', 20, o + 29, MUTEDM)
     for i, (mid, rot) in enumerate(MODOS):
         _seg(20 + i * 68, o + 40, 64, 30, rot, modo == mid)
@@ -1217,6 +1336,8 @@ def menu_toque(x, y, hora_modo, confirma=None):
     """Mesmas areas do menuHit() da referencia, mais som, acerto do relogio, zerar e confirmacao."""
     if y < 26 and x > 186:
         return ('som', None)
+    if y < 30 and x < 64:
+        return ('wifi', None)
     if 40 <= y < 70:
         i = (x - 20) // 68
         if 0 <= i < 3:

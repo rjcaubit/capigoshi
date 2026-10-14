@@ -1,7 +1,8 @@
 # machine falso para rodar o firmware no MicroPython unix
 class Pin:
     IN = 0; OUT = 1; PULL_UP = 2
-    def __init__(self, *a, **k): self.v = 1
+    todos = []
+    def __init__(self, *a, **k): self.v = 1; Pin.todos.append(self)
     def __call__(self, v=None): return self.v
     def value(self, v=None): return self.v
 class I2C:
@@ -14,3 +15,4 @@ class PWM:
     def duty_u16(self, v): pass
 class I2S:
     def __init__(self, *a, **k): pass
+def reset(): raise SystemExit('reset')

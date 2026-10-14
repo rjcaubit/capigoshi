@@ -174,6 +174,8 @@ class Bateria:
             r = i2c.readfrom_mem(self.END, 0x30, 1)[0]            # canais do ADC
             i2c.writeto_mem(self.END, 0x30, bytes([(r | 0x1D) & ~0x02]))
             self.ok = True
+            i2c.writeto_mem(self.END, 0x41, bytes([self._r(0x41) | 0x0F]))  # avisa os apertos do botao PWR
+            i2c.writeto_mem(self.END, 0x49, b'\x0f')
         except OSError:
             pass
 
@@ -199,6 +201,18 @@ class Bateria:
         except OSError:
             return False
 
+    def tecla(self):
+        """True se o botao PWR (o outro botao lateral) foi apertado desde a ultima leitura."""
+        if not self.ok:
+            return False
+        try:
+            v = self._r(0x49) & 0x0F                                # INTSTS2: bits 0 a 3 = tecla PWR
+            if v:
+                self.i2c.writeto_mem(self.END, 0x49, bytes([v]))    # escrever 1 limpa o aviso
+            return bool(v)
+        except OSError:
+            return False
+
 
 # ---------------------------------------------------------------- Som e microfone
 MELODIAS = {
@@ -212,11 +226,16 @@ MELODIAS = {
     'bocejo':  [(500, 140), (400, 180)],
     'piu':     [(2600, 40), (0, 30), (3000, 60)],
     'triste':  [(440, 120), (370, 180)],
+    'festa':   [(523, 60), (659, 60), (784, 60), (1047, 80), (1319, 80), (1568, 260)],
 }
 
 
 class Som:
     TAXA = 16000
+    FILA = 8000             # bytes na fila do alto-falante (1/8 s). Pequena de proposito: essa memoria
+                            # sai da RAM interna, que o Wi-Fi tambem usa; o som inteiro nao caberia la.
+    VOLUME = 0xBF           # volume do alto-falante: 0xBF = cheio (0 dB); cada passo vale 0,5 dB.
+                            # Mais baixo: 0xB4. Acima de 0xBF amplifica, mas pode chiar e distorcer.
     ES8311 = 0x18
     ES7210 = 0x40
 
@@ -274,7 +293,7 @@ class Som:
         w(a, 0x0A, (r(a, 0x0A) | 0x0C) & 0xBF)
         for reg, val in ((0x17, 0xBF), (0x0E, 0x02), (0x12, 0x00), (0x14, 0x1A),
                          (0x0D, 0x01), (0x15, 0x40), (0x37, 0x08), (0x45, 0x00),
-                         (0x31, 0x00), (0x32, 0xB4)):     # 0x32 = volume
+                         (0x31, 0x00), (0x32, self.VOLUME)):
             w(a, reg, val)
 
     def _iniciar_es7210(self):
@@ -337,7 +356,7 @@ class Som:
             periodo = max(2, self.TAXA // freq)
             onda = bytearray(periodo * 4)
             for i in range(periodo):
-                v = int(6000 * math.sin(2 * math.pi * i / periodo))
+                v = int(24000 * math.sin(2 * math.pi * i / periodo))
                 struct.pack_into('<hh', onda, i * 4, v, v)
             partes.append(bytes(onda) * (total // periodo))
         return b''.join(partes)
@@ -364,13 +383,12 @@ class Som:
         self._fechar_mic()                         # o barramento de audio e compartilhado
         try:
             tx = I2S(0, sck=Pin(9), ws=Pin(45), sd=Pin(8), mode=I2S.TX,
-                     bits=16, format=I2S.STEREO, rate=self.TAXA, ibuf=len(dados) + 4000)
+                     bits=16, format=I2S.STEREO, rate=self.TAXA, ibuf=self.FILA)
             tx.irq(self._sem_espera)               # modo sem bloqueio: o jogo nao para enquanto toca
             self.pa(1)
-            tx.write(dados)
-            tx.write(bytes(1600))
+            tx.write(dados)                        # o driver vai puxando do som guardado, aos poucos
             self.tx = tx
-            self.fim = time.ticks_add(time.ticks_ms(), len(dados) // (self.TAXA * 4 // 1000) + 80)
+            self.fim = time.ticks_add(time.ticks_ms(), (len(dados) + self.FILA) // (self.TAXA * 4 // 1000) + 120)
         except Exception as e:
             print('Erro ao tocar som:', e)
             self._parar()

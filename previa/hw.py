@@ -19,8 +19,8 @@ class Movimento:
 class Relogio:
     def __init__(self, i2c): self.ok = True
     def ler(self): return ENTRADA['relogio']
-    def acertar(self, *a): pass
-    def epoch(self): return 0
+    def acertar(self, *a): ENTRADA['acertou'] = a
+    def epoch(self): return ENTRADA.get('epoch', 0)
     def somar_minutos(self, m): pass
 class Som:
     def __init__(self, i2c): self.ligado = True
@@ -31,3 +31,4 @@ class Bateria:
     def __init__(self, i2c): self.ok = True
     def porcentagem(self): return ENTRADA['bateria']
     def carregando(self): return ENTRADA['carregando']
+    def tecla(self): return ENTRADA.get('pwr', False)

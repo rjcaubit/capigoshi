@@ -8,9 +8,9 @@ FEET = 205
 IGNORADO_MS = 600000        # 10 min sem atencao: chora e chama
 ACORDA_MS = 60000           # barulho, sacudida ou toque dormindo: fica 1 min acordado
 HTOP = {'capi': 77, 'pato': 95, 'elefante': 75, 'polvo': 71, 'calopsita': 84, 'cachorro': 75,
-        'gato': 75, 'et': 81, 'sapinho': 65}
+        'gato': 75, 'et': 81, 'sapinho': 65, 'naufrago': 79}
 NOMES = {'capi': 'Capi', 'pato': 'Pato', 'elefante': 'Elefante', 'polvo': 'Polvo', 'calopsita': 'Calopsita',
-         'cachorro': 'Caramelo', 'gato': 'Gato', 'et': 'ET', 'sapinho': 'Sapinho'}
+         'cachorro': 'Caramelo', 'gato': 'Gato', 'et': 'ET', 'sapinho': 'Sapinho', 'naufrago': 'Naufrago'}
 
 
 # ------------------------------------------------------------ curvas
@@ -343,6 +343,9 @@ FRASES_CHAR = {
            'carinho': ('blip!|gostei', 'cosquinha|alienigena')},
     'sapinho': {'ocioso': ('pula comigo!', 'croac!', 'mosca? onde?', 'o lago e|meu', 'boing boing!'),
                 'carinho': ('croac!', 'pulo de|alegria!')},
+    'naufrago': {'ocioso': ('vi um navio!', 'cade minha|jangada?', 'coco de|novo...', 'garrafa ao|mar!', 'terra a|vista!',
+                            'saudade da|ilha'),
+                 'carinho': ('companhia!|que bom', 'nao to mais|sozinho!')},
 }
 
 POOLS = {

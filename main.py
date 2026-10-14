@@ -8,6 +8,9 @@
 # Sacudir a placa ou gritar perto: acordado ele adora, dormindo leva um susto.
 # No Cuidar e no Olhar ele "vive" (vida.py): 21 movimentos, falas, reacoes a toque, colo,
 # sacudida e barulho, e chora se ficar 10 min sem atencao.
+# Internet e amigos (rede.py): com Wi-Fi ele acerta a hora e o ceu mostra o tempo de verdade;
+# duas placas encostadas fazem festa e trocam presentes. BOOT segurado 3 s (ou BOOT + PWR, os
+# dois botoes da lateral) abre a configuracao do Wi-Fi pelo celular (portal.py).
 # Direcao visual: design_handoff_capigoshi_1c (desenho.py).
 
 import time, math, json, random, gc
@@ -15,6 +18,7 @@ from machine import I2C, Pin
 import hw
 import desenho as d
 import vida as V
+import rede
 from hw import W, H
 
 # ------------------------------------------------------------ ajustes
@@ -29,11 +33,20 @@ DORME, ACORDA = 22, 6       # o bichinho dorme das 22:00 as 6:00 (em todos os mo
 ACORDADO_MS = 60000         # grito ou sacudida enquanto dorme: acorda por 1 minuto
 V.ACORDA_MS = ACORDADO_MS
 BATERIA_FRACA = 10          # % da bateria em que a tela pisca o aviso
+SEGURAR_WIFI_MS = 3000      # BOOT segurado esse tempo abre a configuracao do Wi-Fi
+TRES_TOQUES_MS = 600        # 3 toques no BOOT, com ate esse intervalo entre eles: liga/desliga o modo offline
+PRESENTE_HORAS = 3          # presente de amigo fica no gramado por 3 horas
+PRESENTES_MAX = 6           # quantos cabem no gramado
 
 # Ritmo do Pet, por minuto de jogo (de 100 a 30 de fome leva umas 4 horas)
 FOME_MIN, ALEGRIA_MIN, ENERGIA_MIN = 0.25, 0.2, 0.15
 FOME_DORMINDO, ENERGIA_DORMINDO = 0.1, 1.2
 CHANCE_COCO, CHANCE_DOENCA = 0.012, 0.015
+# O que cada botao do Pet da. Toda barra tem um botao que enche: comida da fome e um pouco de
+# energia, brincar da alegria (e cansa), banho da saude e energia, remedio cura.
+COMER_FOME, COMER_ENERGIA = 25, 6
+BRINCAR_ALEGRIA, BRINCAR_CANSA = 20, 8
+BANHO_SAUDE, BANHO_ENERGIA = 10, 10
 
 # ------------------------------------------------------------ hardware
 i2c = I2C(0, scl=Pin(14), sda=Pin(15), freq=400000)
@@ -77,7 +90,6 @@ if cfg['modo'] not in ('pet', 'companion', 'explore'):
     cfg['modo'] = 'pet'
 if cfg['vel'] not in (1, 2, 3):
     cfg['vel'] = 2
-som.ligado = cfg['som']
 
 PET_PADRAO = {'fome': 80, 'alegria': 80, 'energia': 80, 'saude': 100, 'cocos': 0,
               'doente': False, 'dormindo': False, 'cochilo': False, 'epoch': 0,
@@ -113,35 +125,10 @@ def nome():
     return d.NOMES[cfg['personagem']]
 
 
-# ------------------------------------------------------------ Wi-Fi opcional (acerta a hora)
-def sincronizar_hora():
-    try:
-        with open('wifi.json') as f:
-            w = json.load(f)
-    except Exception:
-        return False
-    try:
-        import network, ntptime
-        sta = network.WLAN(network.STA_IF)
-        sta.active(True)
-        sta.connect(w['ssid'], w['senha'])
-        for _ in range(40):
-            if sta.isconnected():
-                break
-            time.sleep_ms(250)
-        ok = sta.isconnected()
-        if ok:
-            ntptime.settime()
-            t = time.localtime(time.time() + w.get('fuso', -3) * 3600)
-            relogio.acertar(t[0], t[1], t[2], t[3], t[4], t[5])
-        sta.active(False)
-        return ok
-    except Exception as e:
-        print('Nao consegui acertar a hora pela internet:', e)
-        return False
-
-
 # ------------------------------------------------------------ hora real e simulada
+SILENCIO_DE, SILENCIO_ATE = 22, 8       # das 22:00 as 8:00 fica mudo sozinho
+
+
 def hora_real():
     t = relogio.ler()
     return (t[3] + t[4] / 60 + t[5] / 3600) if t else 12.0
@@ -171,6 +158,16 @@ def fator_tempo():
     return 1440 / d.VEL_MIN[cfg['vel']] if cfg['hora'] == 'sim' else 1
 
 
+def hora_de_silencio():
+    """De noite o bichinho nao faz barulho, mesmo com o som ligado. Vale o relogio de verdade."""
+    h = hora_real()
+    return h >= SILENCIO_DE or h < SILENCIO_ATE
+
+
+def acertar_som():
+    som.ligado = cfg['som'] and not hora_de_silencio()
+
+
 def relogio_txt(h):
     return '%02d:%02d' % (int(h), int(h * 60) % 60)
 
@@ -190,6 +187,16 @@ botao_antes = 1
 piso_mic = 2000.0           # ruido de fundo do microfone (se adapta)
 toque_visto = 0             # ultimo quadro em que o dedo estava na tela
 bat_pct, bat_carregando, bat_lida, bat_avisou = None, False, -60000, False
+
+botao_desde, botao_usado = 0, True
+botao_toques = []           # horas dos ultimos toques curtos no BOOT
+reancorar = False           # depois de uma parada longa (portal do Wi-Fi), nao conta o tempo parado
+
+# internet e amigos
+wx_agora = None             # clima de verdade para desenhar (rede.wx) ou None
+amigo_perto = None          # personagem da placa encostada na nossa, ou None
+prox_fala_clima = 20000     # no relogio da vida (vt)
+limpou_presentes = 0
 
 # menu
 menu_borda, menu_alvo, menu_arrasta = 0.0, 0, False
@@ -335,23 +342,25 @@ def acao_pet(i):
         return
     som.tocar('clique')
     if i == 0:
-        if pet['fome'] > 92:
+        if pet['fome'] >= 99.5:
             falar('To cheio!')
         else:
-            pet['fome'] = lim(pet['fome'] + 25)
+            pet['fome'] = lim(pet['fome'] + COMER_FOME)
+            pet['energia'] = lim(pet['energia'] + COMER_ENERGIA)
             iniciar_anim('comer')
             som.tocar('comer')
     elif i == 1:
         if pet['energia'] < 15:
             falar('Cansado...')
         else:
-            pet['alegria'] = lim(pet['alegria'] + 20)
-            pet['energia'] = lim(pet['energia'] - 8)
+            pet['alegria'] = lim(pet['alegria'] + BRINCAR_ALEGRIA)
+            pet['energia'] = lim(pet['energia'] - BRINCAR_CANSA)
             iniciar_anim('pular')
             som.tocar('feliz')
     elif i == 2:
         pet['cocos'] = 0
-        pet['saude'] = lim(pet['saude'] + 3)
+        pet['saude'] = lim(pet['saude'] + BANHO_SAUDE)
+        pet['energia'] = lim(pet['energia'] + BANHO_ENERGIA)
         iniciar_anim('banho')
         falar('Que banho bom!')
         som.tocar('banho')
@@ -640,6 +649,183 @@ def desenhar_visita(agora, cx, topo, ph, na_agua):
         d.vagalumes(agora)
 
 
+# ------------------------------------------------------------ internet, clima e amigos (rede.py)
+# (movimento, fala) que ele sorteia de vez em quando conforme o tempo la fora
+FALAS_CLIMA = {
+    'chuva': (('olhar', 'que chuva!'), ('tremer', 'to todo|molhado!'), ('pular', 'banho de|chuva!')),
+    'tempestade': (('susto', 'trovao!'), ('tremer', 'que medo|de raio')),
+    'neve': (('tremer', 'ta nevando!'), ('comemorar', 'neve!')),
+    'neblina': (('olhar', 'cade tudo?'),),
+    'vento': (('tonto', 'que|ventania!'), ('olhar', 'quase|voei!')),
+    'nublado': (('olhar', 'sera que|chove?'),),
+    'sol': (('dancar', 'que sol|gostoso!'), ('espreguicar', 'dia lindo|la fora')),
+    'noite': (('olhar', 'ceu limpo|hoje!'),),
+    'calor': (('bocejar', 'que calor!'), ('olhar', 'quero um|sorvete')),
+    'frio': (('tremer', 'que frio!'), ('tremer', 'cade meu|casaco?')),
+}
+NOME_TEMPO = {'chuva': 'Chuva', 'tempestade': 'Tempestade', 'neve': 'Neve', 'neblina': 'Neblina',
+              'vento': 'Vento', 'nublado': 'Nublado', 'sol': 'Ceu limpo'}
+
+
+def ler_presentes():
+    try:
+        with open('presentes.json') as f:
+            return [p for p in json.load(f) if len(p) == 2][-PRESENTES_MAX:]
+    except Exception:
+        return []
+
+
+presentes = ler_presentes()         # [tipo, epoch em que some]
+
+
+def vida_livre():
+    """Vivo e sem nada para fazer agora: pode comecar um movimento novo."""
+    return (vida_ativa() and not (L['move'] or L['queue'] or L['grab'] or L['fall'])
+            and vt >= L['shakeUntil'])
+
+
+def chegou_amigo(char):
+    V.acordar(L, vt)
+    pet['alegria'] = lim(pet['alegria'] + 10)
+    som.tocar('festa')
+    if vida_ativa():
+        L['queue'] = []
+        V.tocar(L, vt, 'comemorar', say='oi, %s!' % d.NOMES.get(char, 'amigo'))
+    else:
+        iniciar_anim('festa')
+        balao('p', 'grito', 'AMIGO!', 2200)
+
+
+def ganhar_presente(tipo):
+    presentes.append([tipo, relogio.epoch() + PRESENTE_HORAS * 3600])
+    del presentes[:-PRESENTES_MAX]
+    salvar('presentes.json', presentes)
+    pet['alegria'] = lim(pet['alegria'] + 8)
+    som.tocar('amor')
+    if vida_ativa():
+        V.falar(L, vt, 'presente!', 'shout')
+    else:
+        balao('p', 'grito', 'OBA!', 2200)
+
+
+def limpar_presentes():
+    """Os presentes somem depois de algumas horas."""
+    e = relogio.epoch()
+    n = len(presentes)
+    presentes[:] = [p for p in presentes if e < p[1] <= e + PRESENTE_HORAS * 3600]
+    if len(presentes) != n:
+        salvar('presentes.json', presentes)
+
+
+def falar_do_tempo():
+    global prox_fala_clima
+    prox_fala_clima = vt + random.randint(60000, 150000)
+    tipo = rede.tipo_de(wx_agora)
+    graus = rede.clima['temp']
+    if tipo in ('sol', 'nublado'):
+        if graus is not None and graus >= 30:
+            tipo = 'calor'
+        elif graus is not None and graus <= 14:
+            tipo = 'frio'
+        elif tipo == 'sol' and d.e_noite(hora_atual()):
+            tipo = 'noite'
+    mov, frase = random.choice(FALAS_CLIMA[tipo])
+    V.tocar(L, vt, mov, say=frase)
+
+
+def atualizar_rede(agora):
+    global wx_agora, amigo_perto, limpou_presentes
+    vivo = fase_vida() not in ('ovo', 'estrela')
+    epoch = relogio.epoch()
+    for ev in rede.passo(agora, epoch, cfg['personagem'], vivo):
+        k = ev[0]
+        if k == 'hora':
+            relogio.acertar(*ev[1])
+            sistema('Hora certa!')
+        elif k == 'clima':
+            sistema('%s, %dC' % (NOME_TEMPO[ev[2]], d.ri(ev[1])), 4000)
+        elif k == 'sem_wifi':
+            sistema('Sem internet')
+        elif not vivo:
+            pass                                          # ovo e estrela nao fazem festa
+        elif k == 'chegou':
+            chegou_amigo(ev[1])
+        elif k == 'mandei':
+            falar('toma um|presente!')
+            som.tocar('amor')
+        elif k == 'presente':
+            ganhar_presente(ev[1])
+    amigo_perto = rede.amigo() if vivo else None
+    wx_agora = rede.wx(epoch)
+    if amigo_perto:                                       # pertinho do amigo: pula de felicidade sem parar
+        V.acordar(L, vt, 5000)
+        L['lastTouch'] = vt
+        if vida_livre():
+            V.tocar(L, vt, random.choice(('pular', 'pular', 'comemorar', 'dancar', 'girar')), auto=True)
+        elif not vida_ativa() and not anim and cfg['modo'] != 'explore':
+            iniciar_anim('festa')
+    elif wx_agora and vt >= prox_fala_clima and vida_livre() and not L['asleep'] and not sono_vida():
+        falar_do_tempo()
+    if time.ticks_diff(agora, limpou_presentes) > 10000:
+        limpou_presentes = agora
+        limpar_presentes()
+
+
+def trocar_offline():
+    cfg['offline'] = not cfg.get('offline')
+    rede.ficar_offline(cfg['offline'])
+    salvar('config.json', cfg)
+    sistema('Offline: sem radio' if cfg['offline'] else 'Online de novo!', 3000)
+    som.tocar('bocejo' if cfg['offline'] else 'feliz')
+
+
+def abrir_wifi():
+    """Para o jogo e abre a configuracao do Wi-Fi pelo celular (portal.py)."""
+    global reancorar
+    pet['epoch'] = relogio.epoch()
+    salvar(arquivo_pet(cfg['personagem']), pet)
+    salvar('config.json', cfg)
+    som.tocar('feliz')
+    try:
+        import portal
+        if cfg.get('offline'):
+            trocar_offline()                             # configurar o Wi-Fi tira do offline
+        rede.desligar_wifi()
+        gravou = portal.abrir(tela, botao)
+    except Exception as e:
+        print('Wi-Fi indisponivel:', e)
+        gravou = False
+    if gravou:
+        import machine
+        machine.reset()
+    rede.ler_wifi()
+    sistema('Wi-Fi: depois!')
+    reancorar = True
+    gc.collect()
+
+
+def rotulo_hora(hora):
+    if wx_agora and rede.clima['temp'] is not None:
+        return '%s %dC' % (relogio_txt(hora), d.ri(rede.clima['temp']))
+    return relogio_txt(hora)
+
+
+def desenhar_amigo(agora):
+    """O amigo da outra placa espia pelo cantinho da tela, pulando junto."""
+    if not amigo_perto:
+        return
+    id = amigo_perto if amigo_perto in d.ELENCO else 'capi'
+    d.personagem(id, 12, d.FEET - int(abs(math.sin(agora / 160)) * 12), 'feliz',
+                 'aberta' if (agora // 300) % 2 else 'sorriso', s=0.8)
+
+
+def desenhar_tempo_e_presentes(agora, modo):
+    for i, p in enumerate(presentes):
+        d.presente(p[0], 48 + i * 22, 220, agora)
+    if wx_agora:
+        d.tempo(wx_agora, agora, 224 if modo == 'pet' else H)
+
+
 # ------------------------------------------------------------ reacoes: grito e sacudida
 def verificar_sensores(agora):
     global ultima_reacao, piso_mic, grito_seguidos
@@ -795,7 +981,7 @@ def desenhar_jogo(agora):
     modo = cfg['modo']
     hora = hora_atual()
     ph = d.fase_de(hora)
-    d.ceu(ph, hora, agora)
+    d.ceu(ph, hora, agora, wx_agora)
     vida = fase_vida()
     if ph['estrelas'] and cfg.get('estrelas'):
         d.estrelas_antigas(len(cfg['estrelas']) - (1 if vida == 'estrela' else 0), agora)
@@ -803,6 +989,8 @@ def desenhar_jogo(agora):
         d.estrela_nome(nome())
     if modo == 'explore':
         desenhar_passeio(agora, ph)
+        if wx_agora:
+            d.tempo(wx_agora, agora, H)
         return
     d.chao(ph, agora)
     da = time.ticks_diff(agora, anim_ini)
@@ -810,9 +998,11 @@ def desenhar_jogo(agora):
         anim = ''
     if vida == 'estrela':                              # noite de despedida: so o ceu
         if modo == 'companion':
-            d.etiqueta(relogio_txt(hora), 8, 2)
+            d.etiqueta(rotulo_hora(hora), 8, 2)
         return
     dorme = dormindo()
+    if vida != 'ovo':
+        desenhar_amigo(agora)
     if vida_ativa() and vida_out is not None:
         desenhar_vivo(agora, ph, hora, modo)
         return
@@ -919,6 +1109,7 @@ def desenhar_jogo(agora):
     elif modo == 'companion' and visita:
         desenhar_visita(agora, cx, topo, ph, na_agua)
 
+    desenhar_tempo_e_presentes(agora, modo)
     if turno:
         if turno[0] == 'v':
             d.fala(turno[1], viz_x, vtopo)
@@ -930,7 +1121,7 @@ def desenhar_jogo(agora):
     if modo == 'pet' and vida != 'ovo':
         d.hud_pet(pet)
     elif modo == 'companion':
-        d.etiqueta(relogio_txt(hora), 8, 2)
+        d.etiqueta(rotulo_hora(hora), 8, 2)
 
 
 def verificar_bateria(agora):
@@ -972,11 +1163,12 @@ def desenhar_vivo(agora, ph, hora, modo):
         d.texto('z', cx + meia + z * 4, topo - 4 - z * 7, d.CREME, 2)
     if modo == 'companion' and visita:
         desenhar_visita(agora, int(cx), topo, ph, False)
+    desenhar_tempo_e_presentes(agora, modo)
     desenhar_baloes(agora, cx, topo, meia)
     if modo == 'pet':
         d.hud_pet(pet)
     else:
-        d.etiqueta(relogio_txt(hora), 8, 2)
+        d.etiqueta(rotulo_hora(hora), 8, 2)
 
 
 def desenhar_sobreposicoes(agora):
@@ -986,7 +1178,8 @@ def desenhar_sobreposicoes(agora):
         d.sistema(sis_txt)
     if menu_borda >= 1:
         d.menu(int(menu_borda), cfg['modo'], cfg['personagem'], cfg['hora'], cfg['vel'],
-               relogio_txt(hora_real()), cfg['som'], menu_pend, menu_conf, legenda_vida(), fase_vida())
+               relogio_txt(hora_real()), cfg['som'], menu_pend, menu_conf, legenda_vida(), fase_vida(),
+               rede.situacao())
     else:
         d.alca()
 
@@ -1007,7 +1200,8 @@ def acao_menu(x, y):
     k, v = r
     som.tocar('clique')
     if k == 'som':
-        cfg['som'] = som.ligado = not cfg['som']
+        cfg['som'] = not cfg['som']
+        acertar_som()
     elif k == 'modo' and v != cfg['modo']:
         cfg['modo'] = v
         if v != 'explore':
@@ -1035,6 +1229,9 @@ def acao_menu(x, y):
     elif k == 'vel' and v != cfg['vel']:
         iniciar_sim(hora_atual())
         cfg['vel'] = v
+    elif k == 'wifi':
+        fechar_menu()
+        abrir_wifi()
     elif k == 'fechar':
         fechar_menu()
 
@@ -1152,12 +1349,29 @@ def processar_toque(agora):
         arrastar(x, y)
 
 
-def verificar_botao():
-    global botao_antes
+def verificar_botao(agora):
+    """BOOT: toque curto fecha o menu e volta do Passear; 3 toques seguidos ligam e desligam o
+    modo offline; segurado 3 s, ou junto com o PWR (os dois botoes da lateral), abre o Wi-Fi."""
+    global botao_antes, botao_desde, botao_usado
     if botao is None:
         return
     v = botao.value()
     if v == 0 and botao_antes == 1:
+        botao_desde, botao_usado = agora, False
+        bateria.tecla()                                # esquece apertos antigos do PWR
+    elif v == 0 and not botao_usado:
+        if time.ticks_diff(agora, botao_desde) >= SEGURAR_WIFI_MS or bateria.tecla():
+            botao_usado = True
+            abrir_wifi()
+    elif v == 1 and botao_antes == 0 and not botao_usado:
+        if botao_toques and time.ticks_diff(agora, botao_toques[-1]) > TRES_TOQUES_MS:
+            botao_toques.clear()
+        botao_toques.append(agora)
+        if len(botao_toques) >= 3:
+            botao_toques.clear()
+            trocar_offline()
+            botao_antes = v
+            return
         if menu_alvo or menu_borda >= 1:
             fechar_menu()
         elif cfg['modo'] == 'explore':
@@ -1171,13 +1385,15 @@ def verificar_botao():
 def passo(agora, dt):
     global acc_pet, ultimo_save, ultimo_urgente, vt, vida_out
     vt += dt
+    acertar_som()
     som.atualizar()
     processar_toque(agora)
-    verificar_botao()
+    verificar_botao(agora)
     animar_menu()
     verificar_bateria(agora)
     envelhecer(dt)
     verificar_sensores(agora)
+    atualizar_rede(agora)
     if cfg['modo'] == 'pet':
         acc_pet += dt * fator_tempo()
         while acc_pet >= TICK_PET_SEG * 1000:
@@ -1209,8 +1425,10 @@ def passo(agora, dt):
 
 
 def principal():
-    if sincronizar_hora():
-        sistema('Hora certa!')
+    global reancorar
+    rede.iniciar()
+    if cfg.get('offline'):
+        rede.ficar_offline(True)
     if relogio.ler() is None:
         relogio.acertar(2026, 1, 1, 12, 0, 0)
     iniciar_sim(hora_real())
@@ -1218,6 +1436,8 @@ def principal():
     anterior = ultimo_gc = time.ticks_ms()
     while True:
         agora = time.ticks_ms()
+        if reancorar:
+            reancorar, anterior = False, agora
         dt = time.ticks_diff(agora, anterior)
         anterior = agora
         passo(agora, dt)

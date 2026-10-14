@@ -49,6 +49,8 @@ mpremote connect "$PORT" \
   + cp "$DIR/hw.py" : \
   + cp "$DIR/desenho.py" : \
   + cp "$DIR/vida.py" : \
+  + cp "$DIR/rede.py" : \
+  + cp "$DIR/portal.py" : \
   + cp -r "$DIR/sons" :
 
 # Acerta o relógio da placa com a hora deste computador (não precisa de internet)

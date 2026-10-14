@@ -61,3 +61,6 @@ else
     echo "ok     fala$i    <- $(basename "$voz") a partir de $ini s ($(stat -f%z "extra/fala$i.raw") bytes)"
   done
 fi
+
+# por fim, deixa todos o mais alto possivel sem distorcer
+python3 normalizar.py extra/*.raw

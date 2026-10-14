@@ -778,7 +778,13 @@ var NP = {
   ET_CL: [190, 240, 120],
   SAPO: [150, 200, 56],
   SAPO_ESC: [96, 146, 36],
-  SAPO_CL: [214, 232, 140]
+  SAPO_CL: [214, 232, 140],
+  NAU: [234, 168, 116],
+  NAU_ESC: [194, 122, 76],
+  NAU_CABELO: [107, 62, 30],
+  NAU_BARBA: [138, 90, 50],
+  NAU_CAMISA: [236, 226, 200],
+  NAU_SHORT: [64, 98, 170]
 };
 function polvo(g, cx, pe, o) {
   var s = o.s,
@@ -1010,6 +1016,45 @@ function sapinho(g, cx, pe, o) {
     half: 35 * s
   };
 }
+// O cara da ilha do Companion (companion.mundocapi.com): mesmo desenho do naufrago() do desenho.py.
+function naufrago(g, cx, pe, o) {
+  var s = o.s,
+    _rel9 = rel(g, cx, pe, s, o.ol, function (c) {
+      return c === NP.NAU ? NP.NAU_ESC : null;
+    }),
+    E = _rel9.E,
+    P = _rel9.P,
+    R = _rel9.R,
+    A = _rel9.A;
+  E(-10, -2, 8, 4, NP.NAU_ESC, 1);
+  E(10, -2, 8, 4, NP.NAU_ESC, 1);
+  E(0, -17, 24, 15, NP.NAU_SHORT, 1);
+  E(0, -37, 26, 25, NP.NAU_CAMISA, 1);
+  P(0, -17, [-23, -6, -16, 5, -9, -3, 0, 6, 9, -3, 16, 5, 23, -6], NP.NAU_CAMISA);
+  P(0, -58, [-7, 0, 7, 0, 0, 11], NP.NAU);
+  E(-23, -36, 6, 11, NP.NAU, 1);
+  E(23, -36, 6, 11, NP.NAU, 1);
+  E(0, -78, 31, 26, NP.NAU_CABELO, 1);
+  P(-9, -100, [-7, 6, 7, 6, -4, -9], NP.NAU_CABELO);
+  P(7, -101, [-7, 7, 7, 7, 6, -9], NP.NAU_CABELO);
+  E(0, -71, 25, 21, NP.NAU);
+  E(0, -58, 19, 11, NP.NAU_BARBA);
+  E(0, -59, 8, 5.5, NP.NAU);
+  P(0, -90, [-16, 0, -6, 8, 0, 1, 8, 9, 17, 0], NP.NAU_CABELO);
+  var bc = o.sick ? CP.ENJOADA : [240, 150, 130];
+  E(-19, -68, 5, 3, bc);
+  E(19, -68, 5, 3, bc);
+  var eyes = eyesG(o, cx, pe, E, R, A, [[-10, -76, 6], [10, -76, 6]], 'solid', CP.PRETO, NP.NAU);
+  E(0, -67, 3, 2.5, NP.NAU_ESC);
+  mouthG(o, E, A, 0, -61, .8, CP.PRETO, false);
+  if (o.sick) termometro(g, cx + 32 * s, pe - 60 * s);
+  return {
+    eyes: eyes,
+    head: pe - 74 * s,
+    top: pe - 106 * s,
+    half: 31 * s
+  };
+}
 var CHAR_SCALE = exports.CHAR_SCALE = 0.74;
 function egg(g, cx, pe, o) {
   var c = [250, 240, 222];
@@ -1043,7 +1088,8 @@ var CHARS = exports.CHARS = {
   cachorro: cachorro,
   gato: gato,
   et: et,
-  sapinho: sapinho
+  sapinho: sapinho,
+  naufrago: naufrago
 };
 var NOMES = exports.NOMES = {
   capi: 'Capi',
@@ -1054,7 +1100,8 @@ var NOMES = exports.NOMES = {
   cachorro: 'Caramelo',
   gato: 'Gato',
   et: 'ET',
-  sapinho: 'Sapinho'
+  sapinho: 'Sapinho',
+  naufrago: 'Naufrago'
 };
 var PALS = exports.PALS = {
   capi: [CP.MARROM, CP.ESCURO, CP.MASCARA, CP.CREME, AMARELO],
@@ -1065,7 +1112,8 @@ var PALS = exports.PALS = {
   cachorro: [NP.CAR, NP.CAR_ESC, NP.CAR_CL, NP.CAR_ORELHA, CP.PRETO],
   gato: [NP.GATO, NP.GATO_ESC, NP.GATO_CL, NP.GATO_IRIS, NP.ROSA],
   et: [NP.ET, NP.ET_ESC, NP.ET_CL, [250, 166, 170], CP.PRETO],
-  sapinho: [NP.SAPO, NP.SAPO_ESC, NP.SAPO_CL, [240, 150, 90], CP.PRETO]
+  sapinho: [NP.SAPO, NP.SAPO_ESC, NP.SAPO_CL, [240, 150, 90], CP.PRETO],
+  naufrago: [NP.NAU, NP.NAU_ESC, NP.NAU_CABELO, NP.NAU_CAMISA, NP.NAU_SHORT]
 };
 function drawChar(g, id, cx, pe, o) {
   o = Object.assign({
@@ -1120,7 +1168,8 @@ var HTOP = exports.HTOP = {
   cachorro: 75,
   gato: 75,
   et: 81,
-  sapinho: 65
+  sapinho: 65,
+  naufrago: 79
 };
 var MOVES = exports.MOVES = {
   andar: {
@@ -2554,7 +2603,7 @@ function novidades(g, sp) {
     g.text(up(st, 'baixar'), 160, y + 21, BRANCO);
   });
   g.hl(24, 224, 192, TRACK);
-  g.text(up(st, 'sistema v1.3'), 32, 236, MUTED);
+  g.text(up(st, 'sistema v1.4'), 32, 236, MUTED);
   g.text(up(st, 'atualizar'), 136, 236, STAT.energia);
 }
 function portrait(g, sp) {
@@ -2641,7 +2690,7 @@ var MENU = exports.MENU = {
   handleY: 256
 };
 var MODES = exports.MODES = [['pet', 'Cuidar'], ['companion', 'Olhar'], ['explore', 'Passear']];
-var CHAR_ORDER = exports.CHAR_ORDER = ['capi', 'elefante', 'pato', 'polvo', 'calopsita', 'cachorro', 'gato', 'et', 'sapinho'];
+var CHAR_ORDER = exports.CHAR_ORDER = ['capi', 'elefante', 'pato', 'polvo', 'calopsita', 'cachorro', 'gato', 'et', 'sapinho', 'naufrago'];
 var SPEED_MIN = exports.SPEED_MIN = {
   1: 30,
   2: 15,
@@ -3063,6 +3112,10 @@ var FRASES_CHAR = exports.FRASES_CHAR = {
   sapinho: {
     ocioso: ['pula comigo!', 'croac!', 'mosca? onde?', 'o lago e|meu', 'boing boing!'],
     carinho: ['croac!', 'pulo de|alegria!']
+  },
+  naufrago: {
+    ocioso: ['vi um navio!', 'cade minha|jangada?', 'coco de|novo...', 'garrafa ao|mar!', 'terra a|vista!', 'saudade da|ilha'],
+    carinho: ['companhia!|que bom', 'nao to mais|sozinho!']
   }
 };
 var POOLS = exports.POOLS = {
@@ -3826,13 +3879,13 @@ window.CapiR=m1.exports;window.CapiV=m2.exports;})();</script>
   function acaoPet(i, t) {
     if (PET.dormindo) { falaPet('Shhh... zzz'); return; }
     if (i === 0) {
-      if (PET.fome > 92) falaPet('To cheio!');
-      else { PET.fome = lim(PET.fome + 25); V.play(L, t, 'comemorar'); falaPet('Nham nham!'); }
+      if (PET.fome >= 99.5) falaPet('To cheio!');
+      else { PET.fome = lim(PET.fome + 25); PET.energia = lim(PET.energia + 6); V.play(L, t, 'comemorar'); falaPet('Nham nham!'); }
     } else if (i === 1) {
       if (PET.energia < 15) falaPet('Cansado...');
       else { PET.alegria = lim(PET.alegria + 20); PET.energia = lim(PET.energia - 8); V.play(L, t, 'cambalhota'); }
     } else if (i === 2) {
-      PET.cocos = 0; PET.saude = lim(PET.saude + 3); V.play(L, t, 'girar'); falaPet('Que banho bom!');
+      PET.cocos = 0; PET.saude = lim(PET.saude + 10); PET.energia = lim(PET.energia + 10); V.play(L, t, 'girar'); falaPet('Que banho bom!');
     } else {
       if (PET.doente) { PET.doente = false; PET.saude = lim(PET.saude + 35); V.play(L, t, 'dancar'); falaPet('Melhorei!'); }
       else falaPet('Nao to doente!');

@@ -6,6 +6,10 @@ __pycache__/
 # Configuracao local com senha de Wi-Fi (use wifi_exemplo.json como modelo)
 wifi.json
 
+# Estado que a placa grava sozinha (previsao do tempo e presentes dos amigos)
+clima.json
+presentes.json
+
 # Sons do Pixabay: a licenca nao permite redistribuir o arquivo solto (gere com sons/pixabay.sh)
 sons/extra/
 
