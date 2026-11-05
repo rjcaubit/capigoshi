@@ -55,3 +55,21 @@ Limites conhecidos do relógio: todo R passa por ele, inclusive o custo de som (
 creditado com K=8 na célula de início), o que reduz o prêmio líquido; isso já está dentro da calibração medida. Se a
 mesma ação recomeça antes do R atrasado (pedido a cada menos de 60 s), o "ignorado" do primeiro credita o minuto
 e a marca do segundo.
+
+## Clima (issue #4, 2026-11)
+
+O clima entra como sentido (grupo `clima`, 4 binários, e `temperatura`, 3 em população; `N_IN` 100 → 107) e como
+alvo do humor. Planejamento e execução: `sdd/ISSUE_4/`.
+
+| Mudança | Constante | Por quê (medido) |
+|---|---|---|
+| Com previsão, o humor regride para o alvo do clima, `1 + 5 % da distância` por minuto | `CLIMA_HUMOR=(200, -100, -350, -500)`, `CLIMA_PUXA_PCT=5` | Só o alvo, a 1/min, não aparece: as recompensas mantêm o humor abaixo dos dois alvos (tristes/h 0,62 na chuva × 0,64 no sol) |
+| Chuva e tempestade cansam; frio também | `CLIMA_ENERGIA=(0, 0, -3, -3)`, `FRIO=15`, `FRIO_ENERGIA=-3` | Pedido na issue; sem regra fixa de sono |
+| Sol dá curiosidade | `CLIMA_CURIOSIDADE=(10, 0, 0, 0)` | Pedido na issue |
+
+Resultado (sementes 1 a 4, chuva 18 °C × sol 25 °C, das 8h às 22h): humor −37 na chuva e +18 no sol; ações tristes
+0,5 a 1,45/h na chuva e 0 a 0,02/h no sol.
+
+As 7 linhas novas de `w_ih` são sorteadas no fim do `Rede.__init__`, e a rede da fonte nasce igual. Mesmo sem clima,
+os aceites antigos mudam de número: hábito 5 → 6 dias e sementes [5, 5, 5, 6] → [6, 6, 5, 5]; silêncio 12,0 → 10,8
+sons/h no começo. O motivo é a sequência aleatória deslocada e a normalização da entrada, que soma as linhas do clima.
