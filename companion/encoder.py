@@ -3,11 +3,13 @@
 import random
 from array import array
 from companion import config as C
+from companion import clima as K
 
-# (nome, primeiro neuronio, quantidade) na ordem da tabela da secao 3; soma = 100
+# (nome, quantidade) na ordem da tabela da secao 3 (soma 100), mais clima e temperatura (issue #4); soma = N_IN
 GRUPOS = (('hora', 8), ('dia', 2), ('toque_reg', 4), ('toque_tipo', 4), ('toque_freq', 4), ('sem_toque', 6),
           ('mov', 4), ('orient', 3), ('som_nivel', 4), ('som_evento', 3), ('luz', 2), ('bateria', 5),
-          ('outra', 3), ('outra_estado', 6), ('novidade', 3), ('drives', 28), ('ultima', 8), ('resposta', 3))
+          ('outra', 3), ('outra_estado', 6), ('novidade', 3), ('drives', 28), ('ultima', 8), ('resposta', 3),
+          ('clima', 4), ('temperatura', 3))
 BASE = {}
 _b = 0
 for _n, _q in GRUPOS:
@@ -82,6 +84,15 @@ class Codificador:
         for k in range(8):
             self._bin('ultima', k, h >> k & 1)
         self.evento('resposta', s.get('resposta'))
+        k = K.indice(s.get('tempo'))               # sem previsao: grupo calado (nenhum sorteio a mais)
+        for j in range(4):
+            self._bin('clima', j, j == k)
+        g = s.get('graus')
+        b = BASE['temperatura']
+        for j in range(3):
+            self.ativ[b + j] = 0
+        if g is not None:
+            self._pop('temperatura', 3, max(5, min(35, g)), 5, 36)
 
     def spikes(self, saida):
         """Sorteia os spikes deste tick; devolve quantos entraram em saida (lista de indices)."""

@@ -10,6 +10,7 @@ class Drives:
         self.interagiu = False            # houve interacao neste minuto (o tedio nao sobe)
         self.afeto_ja_60 = False
         self._min = 0
+        self.clima = (0, 0, 0, 0)          # (alvo do humor, % de puxada, energia, curiosidade), de clima.efeito
 
     def _soma(self, i, x):
         self.d[i] = max(C.DRIVE_MIN[i], min(C.DRIVE_MAX[i], self.d[i] + x))
@@ -23,9 +24,11 @@ class Drives:
         self._min += 1
         d = self.d
         self._soma(C.D_FOME, C.FOME_MIN)
-        self._soma(C.D_ENERGIA, C.ENERGIA_DORMINDO if self.dormindo else C.ENERGIA_ACORDADA)
-        h = d[C.D_HUMOR]
-        self._soma(C.D_HUMOR, -min(C.HUMOR_REGRIDE, h) if h > 0 else min(C.HUMOR_REGRIDE, -h))
+        alvo, puxa, energia, curiosidade = self.clima
+        self._soma(C.D_ENERGIA, C.ENERGIA_DORMINDO if self.dormindo else C.ENERGIA_ACORDADA + energia)
+        h = d[C.D_HUMOR] - alvo                    # regride para o alvo do clima (0 sem previsao)
+        p = C.HUMOR_REGRIDE + abs(h) * puxa // 100
+        self._soma(C.D_HUMOR, -min(p, h) if h > 0 else min(p, -h))
         if d[C.D_FOME] > 800:
             self._soma(C.D_HUMOR, -10)
         if not self.interagiu and not self.dormindo:
@@ -33,7 +36,7 @@ class Drives:
         self.interagiu = False
         if self._min % 10 == 0:
             self._soma(C.D_AFETO, C.AFETO_MIN)
-        self._soma(C.D_CURIOSIDADE, C.CURIOSIDADE_MIN)
+        self._soma(C.D_CURIOSIDADE, C.CURIOSIDADE_MIN + curiosidade)
         self._soma(C.D_ESTRESSE, C.ESTRESSE_MIN)
 
     def avancar(self, minutos, dormindo):

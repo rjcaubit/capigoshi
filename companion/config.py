@@ -2,7 +2,8 @@
 # Tudo inteiro: fracoes viram x10 ou deslocamento de bits. Calibracoes ficam anotadas em CALIBRACAO.md.
 
 # 2. Modelo neural
-N_IN = 100                 # 3. tabela de sentidos (a secao 2 dizia ~80; vale a soma da tabela)
+N_IN = 107                 # 3. tabela de sentidos (100) + clima e temperatura (issue #4)
+N_IN_FONTE = 100           # entradas da fonte; as do clima nascem depois (mesma rede para a mesma semente)
 N_EXC = 80                 # 2. ocultos excitatorios
 N_INIB = 16                # 2. ocultos inibitorios
 N_HID = N_EXC + N_INIB
@@ -77,6 +78,14 @@ RELOGIO_K_POS = 24         # dw = eta * R * K, premio
 RELOGIO_K = 8              # castigo
 RELOGIO_MAX = 1500         # |peso| maximo (corrente por tick)
 MARCA_K = 1                # castigo atrasado nos ocultos marcados: dw = eta * R * MARCA_K >> 2
+
+# Clima (issue #4, companion/clima.py). Por tempo: sol, nublado, chuva, tempestade; None = sem previsao (como antes)
+CLIMA_HUMOR = (200, -100, -350, -500)      # alvo do humor x10: ele regride para ca, e nao para 0
+CLIMA_PUXA_PCT = 5                         # com previsao, o humor anda tambem esta % da distancia ao alvo por minuto
+CLIMA_ENERGIA = (0, 0, -3, -3)             # x10 por minuto acordada, alem de ENERGIA_ACORDADA
+CLIMA_CURIOSIDADE = (10, 0, 0, 0)          # x10 por minuto, alem de CURIOSIDADE_MIN
+FRIO = 15                                  # graus C: abaixo disso a energia cai mais rapido
+FRIO_ENERGIA = -3                          # x10 por minuto acordada
 
 # 6. Aprendizado
 A_PLUS = 2                 # 6.1
