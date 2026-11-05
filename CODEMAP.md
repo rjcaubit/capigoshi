@@ -13,7 +13,7 @@ Fica na raiz, e não em `docs/`, porque `docs/` é o site publicado no GitHub Pa
 | `vida.py` | ~680 | Motor de comportamento: 23 movimentos (`MOVES`), falas (`FRASES`, `MOVE_FALAS`), reações a toque, colo, sacudida e barulho | — |
 | `rede.py` | ~390 | Wi-Fi intermitente (hora e clima a cada 30 min) e amigos por ESP-NOW no canal 1 | `network`, `espnow`, `ntptime` |
 | `portal.py` | ~260 | Configuração do Wi-Fi pelo celular (rede aberta + QR code + página), grava `wifi.json` | `network`, `socket` |
-| `companion/` | ~1450 | Cérebro SNN do modo Companion (issue #2, fase 0 — ainda não ligado ao `main.py`): `config`, `actions` (catálogo das 100 ações), `encoder`, `snn`, `learn`, `drives`, `reward`, `relogio` (hora → saída, issue #3), `clima` (tempo lá fora → alvo do humor, issue #4), `cerebro`; `sim/` simulador e aceites; `testes/` unittest | — (só `array` e `random`) |
+| `companion/` | ~1530 | Cérebro SNN do modo Companion (issue #2, fase 0 — ainda não ligado ao `main.py`): `config`, `actions` (catálogo das 100 ações), `encoder`, `snn`, `learn`, `drives`, `reward`, `relogio` (hora → saída, issue #3), `clima` (tempo lá fora → alvo do humor, issue #4), `cerebro` (com `resumo()`, issue #5), `raiox.html` (página do raio-X); `sim/` simulador, aceites e `raiox`; `testes/` unittest | — (só `array` e `random`) |
 | `CALIBRACAO.md` | — | Constantes do cérebro que mudaram em relação à fonte e por quê | — |
 | `sons/` | — | Sons `.raw` 16 kHz 16 bits estéreo; `sons/extra/` fora do git (Pixabay) | — |
 | `deploy.sh` | — | Grava o MicroPython (apaga a flash) e copia os arquivos | `esptool.py`, `mpremote` |
@@ -42,6 +42,11 @@ Fica na raiz, e não em `docs/`, porque `docs/` é o site publicado no GitHub Pa
   índice da ação em `actions.CATALOGO`. Reações do dono entram por `Cerebro.evento(nome, agora_ms)`.
 - **Clima:** os sentidos aceitam `tempo` (nome de `rede.tipo_de`, ou `None` sem previsão) e `graus` (o codificador trunca
   para inteiro). Na fase 1, o `main.py` passa `rede.tipo_de(rede.wx(epoch))` quando `wx` não é `None`.
+- **Raio-X (issue #5):** `Cerebro.resumo()` devolve um dict só com tipos simples (vira JSON): vontades, hábitos do
+  relógio, mais feitas hoje e ontem, gosta e evita (`w_ho − w_ho0`), as últimas 200 recompensas e os drives de hora
+  em hora. Não muda a decisão. `python3 -m companion.sim.raiox [cenario] [dias] [semente] [chuva]` grava
+  `companion/sim/saida/raiox-*.html` (fora do git). A página `companion/raiox.html` não usa nada de fora; sem dados
+  embutidos, ela pede `brain.json`, que é o que o `portal.py` vai servir na etapa 2.
 - **Testes:** `python3 -m unittest discover -s companion/testes -t .` e `python3 -m companion.sim.aceite todos`
   (velocidade, silêncio, hábito, `sementes` e `clima`, ~11 min).
 - **Fonte das regras:** `sdd/ISSUE_2/00-fonte.md`; divergências em `CALIBRACAO.md`.

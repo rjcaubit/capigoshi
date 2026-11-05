@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Raio-X da Capi</title>
+<style>
+:root{color-scheme:light;--fundo:#fff6ec;--cartao:#fffdf9;--tinta:#2b2118;--tinta2:#6b5b4b;--fraco:#a8998a;--linha:#eadfd2;
+--topo1:#ff9a5a;--topo2:#ff5f8f;--pos:#2a78d6;--neg:#eb6834;--trilho:#f1e7dc;
+--s1:#2a78d6;--s2:#eb6834;--s3:#1baf7a;--s4:#eda100;--s5:#e87ba4;--s6:#008300;--s7:#6250d6;--s8:#e34948}
+@media (prefers-color-scheme:dark){:root:where(:not([data-theme="light"])){color-scheme:dark;--fundo:#17130f;--cartao:#221c17;
+--tinta:#f4ece3;--tinta2:#c9bba9;--fraco:#8a7d70;--linha:#3a3029;--topo1:#c8602a;--topo2:#b8396a;--pos:#3987e5;--neg:#d95926;
+--trilho:#2f2721;--s1:#3987e5;--s2:#d95926;--s3:#199e70;--s4:#c98500;--s5:#d55181;--s6:#008300;--s7:#9085e9;--s8:#e66767}}
+:root[data-theme="dark"]{color-scheme:dark;--fundo:#17130f;--cartao:#221c17;--tinta:#f4ece3;--tinta2:#c9bba9;--fraco:#8a7d70;
+--linha:#3a3029;--topo1:#c8602a;--topo2:#b8396a;--pos:#3987e5;--neg:#d95926;--trilho:#2f2721;--s1:#3987e5;--s2:#d95926;
+--s3:#199e70;--s4:#c98500;--s5:#d55181;--s6:#008300;--s7:#9085e9;--s8:#e66767}
+*{box-sizing:border-box}
+body{margin:0;background:var(--fundo);color:var(--tinta);font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{background:linear-gradient(135deg,var(--topo1),var(--topo2));color:#fff;padding:20px 16px 26px;border-radius:0 0 28px 28px}
+h1{margin:0;font-size:1.6rem}
+h2{margin:0 0 10px;font-size:1.1rem}
+main{max-width:720px;margin:-14px auto 0;padding:0 16px 32px;display:grid;gap:14px}
+.cartao{background:var(--cartao);border:1px solid var(--linha);border-radius:20px;padding:16px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.chip{background:rgba(255,255,255,.22);border-radius:999px;padding:6px 12px;font-size:.9rem}
+.lin{display:grid;grid-template-columns:7.5rem 1fr 3.2rem;align-items:center;gap:8px;min-height:30px}
+.lin span:last-child{text-align:right;font-variant-numeric:tabular-nums;color:var(--tinta2)}
+.trilho{position:relative;height:12px;background:var(--trilho);border-radius:6px;overflow:hidden}
+.barra{position:absolute;top:0;bottom:0;border-radius:4px}
+.meio{position:absolute;left:50%;top:-2px;bottom:-2px;width:2px;background:var(--fraco)}
+.sub{color:var(--tinta2);font-size:.9rem;margin:0 0 10px}
+button{font:inherit;color:inherit;min-height:44px;border-radius:12px;border:1px solid var(--linha);background:var(--cartao);padding:8px 12px;cursor:pointer}
+button[aria-pressed="true"]{background:var(--tinta);color:var(--cartao)}
+.seg{display:flex;gap:8px;margin-bottom:10px}
+.lista{display:grid;gap:6px}
+.hab{display:flex;align-items:center;gap:10px;text-align:left;width:100%}
+.bola{width:14px;height:14px;border-radius:50%;flex:none}
+.rec{display:grid;grid-template-columns:4.6rem 1fr auto;gap:8px;align-items:center;min-height:36px;border-bottom:1px solid var(--linha)}
+.r{font-weight:700;border-radius:8px;padding:2px 8px;color:#fff;font-variant-numeric:tabular-nums}
+.vazio{text-align:center;padding:40px 16px;color:var(--tinta2)}
+.spark{display:grid;grid-template-columns:7.5rem 1fr;align-items:center;gap:8px;min-height:52px}
+.spark svg{width:100%;height:48px;touch-action:pan-y}
+.dica{font-size:.85rem;color:var(--tinta2);min-height:1.2em}
+dl{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:0}
+dt{color:var(--tinta2)}dd{margin:0;font-variant-numeric:tabular-nums}
+#relogio{display:block;width:100%;max-width:300px;margin:0 auto}
+</style>
+</head>
+<body>
+<header><h1>🧠 Raio-X da Capi</h1><div class="chips" id="chips"></div></header>
+<main id="app"><div class="cartao vazio">Carregando o cérebro…</div></main>
+<script>
+var D = /*DADOS*/null;
+var EMO = {fome:'🍎', energia:'⚡', humor:'😊', tedio:'🥱', afeto:'💛', curiosidade:'🔎', estresse:'😣'};
+var TEMPO = {sol:'☀️', nublado:'☁️', neblina:'🌫️', vento:'💨', chuva:'🌧️', neve:'❄️', tempestade:'⛈️'};
+var MOTIVO = {carinho:'carinho', estrela:'estrela', comida:'comida', toque:'toque', shh:'shh!', ignorado:'ignorada',
+  som_sem_resposta:'som sem resposta', custo_som:'custo do som', jogo_fim:'brincou', jogo_repetiu:'brincou de novo',
+  social_ok:'amiga', sacudida_leve:'sacudida', sacudida_forte:'sacudidona', desligou:'desligou'};
+function $(t, a, f) { var e = document.createElement(t); for (var k in a || {}) e.setAttribute(k, a[k]);
+  (f || []).forEach(function (x) { e.append(x); }); return e; }
+function nome(a) { return a.replace(/_/g, ' '); }
+function hm(m) { m = ((m % 1440) + 1440) % 1440; return String(m / 60 | 0).padStart(2, '0') + 'h' + String(m % 60).padStart(2, '0'); }
+function ha(s) { var d = D.agora_s - s; return d < 60 ? 'agora' : d < 3600 ? 'há ' + (d / 60 | 0) + ' min' : 'há ' + (d / 3600 | 0) + ' h'; }
+function cartao(titulo, sub) { var c = $('div', {class: 'cartao'}, [$('h2', {}, [titulo])]); if (sub) c.append($('p', {class: 'sub'}, [sub]));
+  document.getElementById('app').append(c); return c; }
+function barra(rot, frac, cor, txt, centro) {
+  var t = $('div', {class: 'trilho'}), b = $('div', {class: 'barra'});
+  if (centro) { t.append($('div', {class: 'meio'})); var x = Math.max(-1, Math.min(1, frac)) * 50;
+    b.style.left = (x < 0 ? 50 + x : 50) + '%'; b.style.width = Math.abs(x) + '%'; }
+  else { b.style.left = 0; b.style.width = Math.max(0, Math.min(1, frac)) * 100 + '%'; }
+  b.style.background = cor; t.append(b);
+  return $('div', {class: 'lin'}, [$('span', {}, [rot]), t, $('span', {}, [txt])]);
+}
+
+function topo() {
+  var c = document.getElementById('chips'), dias = D.idade_s / 86400;
+  c.append($('span', {class: 'chip'}, [dias < 1 ? (D.idade_s / 3600 | 0) + ' h de vida' : dias.toFixed(1).replace('.', ',') + ' dias de vida']));
+  c.append($('span', {class: 'chip'}, [(D.dormindo ? '💤 ' : '▶️ ') + nome(D.acao)]));
+  c.append($('span', {class: 'chip'}, ['🕒 ' + hm(D.minuto)]));
+  var k = D.clima;
+  c.append($('span', {class: 'chip'}, [k.tempo ? (TEMPO[k.tempo] || '🌡️') + ' ' + k.tempo + (k.graus === null ? '' : ' ' + k.graus + '°') : '📡 sem previsão']));
+}
+
+function vontades() {
+  var c = cartao('Como ela está', 'As 7 vontades agora. O humor vai de −100 a +100; o resto, de 0 a 100.');
+  D.drives.forEach(function (p, i) {
+    var v = p[1] / 10, h = p[0] === 'humor';
+    c.append(barra(EMO[p[0]] + ' ' + p[0], v / 100, 'var(--s' + (i + 1) + ')', (h && v > 0 ? '+' : '') + Math.round(v), h));
+  });
+  if (D.clima.tempo) c.append($('p', {class: 'sub'}, ['Com esse tempo o humor tende a ' + (D.clima.alvo > 0 ? '+' : '') + D.clima.alvo / 10 + '.']));
+}
+
+function faixas(lista, passo) {            // celulas seguidas com a mesma acao viram uma faixa
+  var f = [];
+  lista.forEach(function (x) { var u = f[f.length - 1];
+    if (u && u.acao === x[1] && u.fim === x[0]) { u.fim++; u.pico = Math.max(u.pico, Math.abs(x[2])); u.cel.push(x[0]); }
+    else f.push({acao: x[1], ini: x[0], fim: x[0] + 1, pico: Math.abs(x[2]), cel: [x[0]]}); });
+  f.forEach(function (x) { x.txt = hm(x.ini * passo) + '–' + hm(x.fim * passo); });
+  return f;
+}
+
+function relogio() {
+  var R = D.relogio, n = 1440 / R.passo_min, c = cartao('Relógio dos hábitos', 'O anel de fora é o que ela aprendeu a fazer em cada hora; o de dentro, o que aprendeu a evitar. Toque num hábito para achá-lo no relógio.');
+  var NS = 'http://www.w3.org/2000/svg', svg = document.createElementNS(NS, 'svg'), cores = {}, nc = 0;
+  svg.setAttribute('viewBox', '0 0 260 260'); svg.id = 'relogio'; svg.setAttribute('role', 'img');
+  svg.setAttribute('aria-label', 'Relógio de 24 horas com os hábitos aprendidos');
+  function cor(a) { if (!(a in cores)) cores[a] = nc < 8 ? 'var(--s' + (++nc) + ')' : 'var(--fraco)'; return cores[a]; }
+  function arco(i, r0, r1) {
+    var a0 = (i / n) * 2 * Math.PI - Math.PI / 2, a1 = ((i + 1) / n) * 2 * Math.PI - Math.PI / 2 - 0.012;
+    var p = function (r, a) { return (130 + r * Math.cos(a)).toFixed(1) + ' ' + (130 + r * Math.sin(a)).toFixed(1); };
+    var e = document.createElementNS(NS, 'path');
+    e.setAttribute('d', 'M' + p(r1, a0) + 'A' + r1 + ' ' + r1 + ' 0 0 1 ' + p(r1, a1) + 'L' + p(r0, a1) + 'A' + r0 + ' ' + r0 + ' 0 0 0 ' + p(r0, a0) + 'Z');
+    svg.append(e); return e;
+  }
+  for (var i = 0; i < n; i++) { arco(i, 96, 122).setAttribute('fill', 'var(--trilho)'); arco(i, 70, 90).setAttribute('fill', 'var(--trilho)'); }
+  var fh = faixas(R.habitos, R.passo_min), fe = faixas(R.evita, R.passo_min);
+  function pinta(lista, r0, r1, base) {
+    lista.forEach(function (x) {
+      x.cor = base || cor(x.acao);
+      x.arcos = x.cel.map(function (ci) { var e = arco(ci, r0, r1); e.setAttribute('fill', x.cor);
+        e.setAttribute('opacity', (0.35 + 0.65 * Math.min(1, x.pico / R.max)).toFixed(2)); e.onclick = function () { escolhe(x); }; return e; });
+    });
+  }
+  pinta(fh, 96, 122); pinta(fe, 70, 90, 'var(--fraco)');
+  [0, 6, 12, 18].forEach(function (h) { var a = h / 24 * 2 * Math.PI - Math.PI / 2, t = document.createElementNS(NS, 'text');
+    t.setAttribute('x', 130 + 58 * Math.cos(a)); t.setAttribute('y', 134 + 58 * Math.sin(a)); t.setAttribute('text-anchor', 'middle');
+    t.setAttribute('font-size', '12'); t.setAttribute('fill', 'currentColor'); t.textContent = h + 'h'; svg.append(t); });
+  var agora = document.createElementNS(NS, 'circle'), aa = D.minuto / 1440 * 2 * Math.PI - Math.PI / 2;
+  agora.setAttribute('cx', 130 + 127 * Math.cos(aa)); agora.setAttribute('cy', 130 + 127 * Math.sin(aa)); agora.setAttribute('r', 5);
+  agora.setAttribute('fill', 'var(--tinta)'); svg.append(agora);
+  c.append(svg);
+  var dica = $('p', {class: 'dica', 'aria-live': 'polite'}, ['● é a hora de agora']); c.append(dica);
+  var botoes = [];
+  function escolhe(x) {
+    fh.concat(fe).forEach(function (y) { y.arcos.forEach(function (e) { e.setAttribute('stroke', y === x ? 'var(--tinta)' : 'none'); e.setAttribute('stroke-width', 2); }); });
+    botoes.forEach(function (b) { b.setAttribute('aria-pressed', b._x === x ? 'true' : 'false'); });
+    dica.textContent = (fe.indexOf(x) >= 0 ? 'Evita ' : 'Faz ') + nome(x.acao) + ' das ' + x.txt + ' (força ' + Math.round(100 * x.pico / R.max) + '%)';
+  }
+  var l = $('div', {class: 'lista'});
+  function linha(x, pre) { var b = $('button', {class: 'hab', 'aria-pressed': 'false'}, [$('span', {class: 'bola'}), pre + nome(x.acao) + ' · ' + x.txt]);
+    b.firstChild.style.background = x.cor; b._x = x; b.onclick = function () { escolhe(x); }; botoes.push(b); l.append(b); }
+  fh.forEach(function (x) { linha(x, '✨ '); });
+  fe.slice().sort(function (a, b) { return b.cel.length - a.cel.length; }).slice(0, 5).forEach(function (x) { linha(x, '🚫 '); });
+  if (!fh.length && !fe.length) l.append($('p', {class: 'sub'}, ['Ainda nenhum hábito: ela precisa de alguns dias com a mesma rotina.']));
+  c.append(l);
+}
+
+function maisFeitas() {
+  var c = cartao('O que ela mais fez', 'Quantas vezes cada ação venceu a escolha.'), corpo = $('div'), seg = $('div', {class: 'seg'});
+  [['hoje', 'Hoje'], ['ontem', 'Ontem']].forEach(function (p, i) {
+    var b = $('button', {'aria-pressed': i ? 'false' : 'true'}, [p[1]]);
+    b.onclick = function () { seg.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); }); mostra(p[0]); };
+    seg.append(b); });
+  function mostra(k) { corpo.textContent = ''; var l = D[k], m = l.length ? l[0][1] : 1;
+    if (!l.length) corpo.append($('p', {class: 'sub'}, ['Nada registrado ' + (k === 'hoje' ? 'hoje ainda.' : 'ontem.')]));
+    l.forEach(function (p) { corpo.append(barra(nome(p[0]), p[1] / m, 'var(--s1)', p[1])); }); }
+  c.append(seg, corpo); mostra('hoje');
+}
+
+function gostos() {
+  var c = cartao('O que ela aprendeu', 'Quanto cada ação ficou mais forte (gosta) ou mais fraca (evita) na rede desde que ela nasceu. Os hábitos de horário ficam no relógio.');
+  var m = 1; D.gosta.concat(D.evita).forEach(function (p) { m = Math.max(m, Math.abs(p[1])); });
+  [['💙 Gosta', D.gosta, 'var(--pos)'], ['🧡 Evita', D.evita, 'var(--neg)']].forEach(function (g) {
+    c.append($('p', {class: 'sub'}, [g[0]]));
+    if (!g[1].length) c.append($('p', {class: 'sub'}, ['nada ainda']));
+    g[1].forEach(function (p) { c.append(barra(nome(p[0]), p[1] / m, g[2], (p[1] > 0 ? '+' : '') + p[1], true)); });
+  });
+}
+
+function recompensas() {
+  var R = D.recompensas.slice().reverse(), c = cartao('Últimas recompensas', R.length + ' guardadas. Positiva ensina a repetir; negativa, a evitar.');
+  var l = $('div'), mais = $('button', {}, ['Ver todas (' + R.length + ')']), todas = false;
+  function mostra() { l.textContent = ''; (todas ? R : R.slice(0, 12)).forEach(function (r) {
+    var ch = $('span', {class: 'r'}, [(r[2] > 0 ? '+' : '−') + Math.abs(r[2])]); ch.style.background = r[2] > 0 ? 'var(--pos)' : 'var(--neg)';
+    l.append($('div', {class: 'rec'}, [$('span', {class: 'sub', style: 'margin:0'}, [ha(r[0])]), $('span', {}, [nome(r[1]) + ' · ' + (MOTIVO[r[3]] || nome(r[3]))]), ch])); });
+    mais.textContent = todas ? 'Ver menos' : 'Ver todas (' + R.length + ')'; }
+  mais.onclick = function () { todas = !todas; mostra(); };
+  if (!R.length) c.append($('p', {class: 'sub'}, ['Nenhuma recompensa ainda.'])); else { c.append(l); if (R.length > 12) c.append(mais); mostra(); }
+}
+
+function historia() {
+  var H = D.horas;
+  if (H.length < 2) { cartao('Vontades de hora em hora', 'Ainda sem histórico: as linhas aparecem depois das duas primeiras horas de vida.'); return; }
+  var c = cartao('Vontades nas últimas ' + H.length + ' horas', 'Uma linha por vontade, de hora em hora. Toque ou passe o dedo para ver o valor.');
+  D.drives.forEach(function (p, i) {
+    var h = p[0] === 'humor', lo = h ? -1000 : 0, NS = 'http://www.w3.org/2000/svg', s = document.createElementNS(NS, 'svg');
+    s.setAttribute('viewBox', '0 0 300 48'); s.setAttribute('preserveAspectRatio', 'none');
+    var X = function (k) { return k * 300 / (H.length - 1); }, Y = function (v) { return 44 - (v - lo) / (1000 - lo) * 40; };
+    var pl = document.createElementNS(NS, 'polyline');
+    pl.setAttribute('points', H.map(function (x, k) { return X(k).toFixed(1) + ',' + Y(x[i]).toFixed(1); }).join(' '));
+    pl.setAttribute('fill', 'none'); pl.setAttribute('stroke', 'var(--s' + (i + 1) + ')'); pl.setAttribute('stroke-width', 2);
+    pl.setAttribute('vector-effect', 'non-scaling-stroke'); s.append(pl);
+    var mk = document.createElementNS(NS, 'line'); mk.setAttribute('y1', 0); mk.setAttribute('y2', 48); mk.setAttribute('stroke', 'var(--fraco)');
+    mk.setAttribute('vector-effect', 'non-scaling-stroke'); mk.style.display = 'none'; s.append(mk);
+    var rot = $('span', {}, [EMO[p[0]] + ' ' + p[0]]), val = $('div', {class: 'dica'});
+    function aponta(ev) { var b = s.getBoundingClientRect(), k = Math.round((ev.clientX - b.left) / b.width * (H.length - 1));
+      k = Math.max(0, Math.min(H.length - 1, k)); mk.setAttribute('x1', X(k)); mk.setAttribute('x2', X(k)); mk.style.display = '';
+      val.textContent = (H.length - 1 - k ? 'há ' + (H.length - 1 - k) + ' h: ' : 'última hora: ') + Math.round(H[k][i] / 10); }
+    s.onpointerdown = s.onpointermove = aponta;
+    s.onpointerleave = function (ev) { if (ev.pointerType !== 'mouse') return; mk.style.display = 'none'; val.textContent = ''; };
+    c.append($('div', {class: 'spark'}, [$('div', {}, [rot, val]), s]));
+  });
+}
+
+function porDentro() {
+  var r = D.rede, c = cartao('Por dentro', 'Números para depurar a rede.'), dl = $('dl');
+  [['Semente', D.semente], ['Taxa de aprendizado (η)', r.eta], ['Ruído', r.ruido], ['Ticks rodados', r.ticks.toLocaleString('pt-BR')],
+   ['Entrada mexida pelo STDP', r.ih_mudou_pct + '%'], ['Limiar dos ocultos', r.limiar.join(' / ') + ' (mín / mediana / máx)'], ['Versão do resumo', D.versao]]
+    .forEach(function (p) { dl.append($('dt', {}, [p[0]]), $('dd', {}, [String(p[1])])); });
+  c.append(dl);
+}
+
+function mostrar(d) {
+  D = d; document.getElementById('app').textContent = '';
+  topo(); vontades(); relogio(); maisFeitas(); gostos(); recompensas(); historia(); porDentro();
+}
+function vazio() {
+  document.getElementById('app').innerHTML = '<div class="cartao vazio">🔌 Sem dados do cérebro.<br>Abra esta página pelo Wi-Fi da Capi ou gere com <code>python3 -m companion.sim.raiox</code>.</div>';
+}
+if (D) mostrar(D); else if (location.protocol === 'file:') vazio(); else fetch('brain.json').then(function (r) { if (!r.ok) throw r; return r.json(); }).then(mostrar).catch(vazio);
+</script>
+</body>
+</html>
