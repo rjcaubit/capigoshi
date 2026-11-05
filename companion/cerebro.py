@@ -9,6 +9,7 @@ from companion.learn import Aprendizado
 from companion.drives import Drives
 from companion.reward import Recompensa
 from companion.relogio import Relogio
+from companion import clima as K
 
 FORTES = ('sacudida_leve', 'sacudida_forte', 'carinho', 'toque', 'estrela', 'shh', 'comida')
 DORMIR = A.INDICE['dormir']
@@ -122,6 +123,7 @@ class Cerebro:
         seg = agora_ms // 1000
         d = self.drives
         if seg % 60 == 0:
+            d.clima = K.efeito(s.get('tempo'), s.get('graus'))
             d.minuto()
         if seg % 600 == 0:
             self.rec.habituacao()

@@ -6,6 +6,7 @@ from companion import config as C
 from companion.encoder import BASE
 
 NI, NH, NE = C.N_IN, C.N_HID, C.N_EXC
+NF = C.N_IN_FONTE                 # entradas da fonte; as do clima (issue #4) sao sorteadas no fim do __init__
 RECENTE = 16                      # ticks guardados para o STDP (alem disso o traco ja nao muda peso)
 
 # traco pre/pos: 255 * (15/16)^dt, zero a partir de RECENTE (6.1: decai 1/16 por tick)
@@ -23,14 +24,12 @@ class Rede:
         self.no = no = n_saidas
         self.t = 0
         self.w_ih = array('h', [(ri(*C.W_IH_INI) if random.getrandbits(7) < 128 * C.IH_FORTES // 100
-                                 else ri(0, C.W_IH_FRACO)) << C.W_FRAC for _ in range(NI * NH)])  # [i * NH + h], x16
+                                 else ri(0, C.W_IH_FRACO)) << C.W_FRAC for _ in range(NF * NH)])  # [i * NH + h], x16
         self.w_ho = array('h', [ri(*C.W_HO_INI) for _ in range(NE * no)])     # [h * no + o]
         tempo = [BASE[g] + k for g, n in (('hora', 8), ('dia', 2), ('luz', 2)) for k in range(n)]
         for h in range(C.OCULTOS_TEMPO):
-            for i in range(NI):
+            for i in range(NF):
                 self.w_ih[i * NH + h] = (C.W_MAX << C.W_FRAC) if i in tempo else 0
-        self.w_ih0 = array('h', self.w_ih)
-        self.soma_h = array('i', [sum(self.w_ih[i * NH + h] for i in range(NI)) for h in range(NH)])  # alvo da normalizacao
         self.w_ho0 = array('h', self.w_ho)
         ini, pos, w = array('H', [0] * (NH + 1)), array('H'), array('h')
         for h in range(NH):
@@ -60,6 +59,14 @@ class Rede:
         self.ruido = C.NOISE
         self._rtab = array('h', [ri(-C.NOISE, C.NOISE) for _ in range(1024)])
         self._rk = 0
+        for _ in range((NI - NF) * NH):            # clima: sorteado por ultimo, a rede da fonte nao muda
+            self.w_ih.append((ri(*C.W_IH_INI) if random.getrandbits(7) < 128 * C.IH_FORTES // 100
+                              else ri(0, C.W_IH_FRACO)) << C.W_FRAC)
+        for h in range(C.OCULTOS_TEMPO):          # ocultos de tempo tambem nao ouvem o clima
+            for i in range(NF, NI):
+                self.w_ih[i * NH + h] = 0
+        self.w_ih0 = array('h', self.w_ih)
+        self.soma_h = array('i', [sum(self.w_ih[i * NH + h] for i in range(NI)) for h in range(NH)])  # alvo da normalizacao
         self.contagem = array('H', [0] * no)
 
     def novo_ruido(self, amplitude):
