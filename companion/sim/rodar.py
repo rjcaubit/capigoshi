@@ -26,12 +26,13 @@ def tornar_falante(cer, fator):
             w[h * no + o] = min(C.W_MAX, w[h * no + o] * fator)
 
 
-def simular(dono, dias, semente=1, inicio_h=6, falante=0):
+def simular(dono, dias, semente=1, inicio_h=6, falante=0, tempos=None, humor=None):
+    """tempos: (tipo, graus) por dia, em ciclo (issue #4). humor: lista que recebe (segundo, humor x10) por minuto."""
     random.seed(semente)
     cer = Cerebro(semente)
     if falante:
         tornar_falante(cer, falante)
-    mundo = Mundo()
+    mundo = Mundo(tempos=tempos)
     agenda = []                                # (segundo, evento)
     acoes = []                                 # (segundo, acao) de cada decisao nova
     comida_ate = -1
@@ -51,6 +52,8 @@ def simular(dono, dias, semente=1, inicio_h=6, falante=0):
                     comida_ate = seg + 60
                 cer.evento(ev, seg * 1000)
         s = mundo.sentidos(seg, seg < comida_ate)
+        if humor is not None and seg % 60 == 0:
+            humor.append((seg, cer.drives.d[C.D_HUMOR]))
         antes = len(cer.log)
         cer.segundo(s, seg * 1000)
         for item in cer.log[antes:]:
