@@ -17,6 +17,7 @@ sons/extra/
 previa/out/
 previa/png/
 previa/*.json
+companion/sim/saida/
 
 # Arquivos de trabalho e versoes antigas
 .antes-1c/
