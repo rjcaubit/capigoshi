@@ -1,4 +1,4 @@
-# Testes de aceite da fase 0 (secao 11). Uso: python3 -m companion.sim.aceite [velocidade|silencio|habito|todos]
+# Testes de aceite da fase 0 (secao 11). Uso: python3 -m companion.sim.aceite [velocidade|silencio|habito|sementes|todos]
 import sys
 import time
 from companion import actions as A
@@ -25,7 +25,7 @@ def silencio():
     return inicio > 2 and dia3 < 2
 
 
-def habito(semente=1):
+def dias_habito(semente):
     cer, acoes = simular(CENARIOS['habito'](), 7, semente)
     bons = 0
     for dia in range(7):
@@ -39,8 +39,20 @@ def habito(semente=1):
         bons += ok
         print('habito dia %d: %.1f/h na janela 18h50-19h10, %.1f/h fora %s' % (dia + 1, taxa_j, taxa_f,
                                                                                'ok' if ok else '-'))
+    return bons
+
+
+def habito():
+    bons = dias_habito(1)
     print('habito: %d de 7 dias (meta 5)' % bons)
     return bons >= 5
+
+
+def sementes():
+    """Robustez do habito (issue #3): sementes 1 a 4, media >= 5 dias e nenhuma abaixo de 4."""
+    dias = [dias_habito(s) for s in (1, 2, 3, 4)]
+    print('sementes: %s dias, media %.2f (meta media >= 5, minimo >= 4)' % (dias, sum(dias) / 4))
+    return sum(dias) >= 20 and min(dias) >= 4
 
 
 if __name__ == '__main__':
@@ -49,7 +61,7 @@ if __name__ == '__main__':
         k, v = kv.split('=')
         setattr(C, k, int(v))
     qual = sys.argv[1] if len(sys.argv) > 1 else 'todos'
-    testes = {'velocidade': velocidade, 'silencio': silencio, 'habito': habito}
+    testes = {'velocidade': velocidade, 'silencio': silencio, 'habito': habito, 'sementes': sementes}
     nomes = list(testes) if qual == 'todos' else [qual]
     falhou = [n for n in nomes if not testes[n]()]
     print('FALHOU: ' + ', '.join(falhou) if falhou else 'ACEITE OK')
