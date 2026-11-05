@@ -56,10 +56,18 @@ class TestEntrada(unittest.TestCase):
         self.assertEqual(t + 3, C.N_IN)
 
     def test_rede_da_fonte_nao_muda(self):
+        from companion import snn
         r = Rede(100, 1)
         self.assertEqual(len(r.w_ih), C.N_IN * C.N_HID)
+        snn.NI = snn.NF                                           # rede sem as entradas do clima, como antes da #4
+        try:
+            f = Rede(100, 1)
+        finally:
+            snn.NI = C.N_IN
         n = C.N_IN_FONTE * C.N_HID
-        self.assertEqual(r.w_ih[:n], Rede(100, 1).w_ih[:n])       # sorteio deterministico por semente
+        self.assertEqual(r.w_ih[:n], f.w_ih)
+        for nome in ('w_ho', 'hh_ini', 'hh_pos', 'hh_w', '_rtab'):
+            self.assertEqual(getattr(r, nome), getattr(f, nome))
 
     def test_cerebro_le_o_clima(self):
         c = Cerebro(1)

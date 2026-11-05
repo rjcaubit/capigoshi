@@ -61,7 +61,7 @@ def dias_clima(semente):
     """Humor medio (pontos) e acoes tristes por hora, das 8h as 22h, nos dias de chuva e de sol."""
     humor = []
     cer, acoes = simular(CENARIOS['semana'](), 6, semente, tempos=TEMPOS_CHUVA, humor=humor)
-    soma = {'chuva': [0, 0, 0], 'sol': [0, 0, 0]}      # humor x10 somado, minutos, acoes tristes
+    soma = {'chuva': [0, 0, 0, 0], 'sol': [0, 0, 0, 0]}  # humor x10 somado, minutos, acoes tristes, dias
     for dia in range(6):
         a, b = dia * 86400 + 8 * 3600, dia * 86400 + 22 * 3600
         t = soma[TEMPOS_CHUVA[dia % 2][0]]
@@ -69,7 +69,8 @@ def dias_clima(semente):
         t[0] += sum(hs)
         t[1] += len(hs)
         t[2] += sum(1 for s, x in acoes if a <= s < b and x in TRISTES)
-    return {k: (v[0] / v[1] / 10, v[2] / (3 * 14)) for k, v in soma.items()}
+        t[3] += 1
+    return {k: (v[0] / v[1] / 10, v[2] / (v[3] * 14)) for k, v in soma.items()}
 
 
 def clima():

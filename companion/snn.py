@@ -62,6 +62,9 @@ class Rede:
         for _ in range((NI - NF) * NH):            # clima: sorteado por ultimo, a rede da fonte nao muda
             self.w_ih.append((ri(*C.W_IH_INI) if random.getrandbits(7) < 128 * C.IH_FORTES // 100
                               else ri(0, C.W_IH_FRACO)) << C.W_FRAC)
+        for h in range(C.OCULTOS_TEMPO):          # ocultos de tempo tambem nao ouvem o clima
+            for i in range(NF, NI):
+                self.w_ih[i * NH + h] = 0
         self.w_ih0 = array('h', self.w_ih)
         self.soma_h = array('i', [sum(self.w_ih[i * NH + h] for i in range(NI)) for h in range(NH)])  # alvo da normalizacao
         self.contagem = array('H', [0] * no)

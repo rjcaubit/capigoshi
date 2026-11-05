@@ -92,7 +92,7 @@ class Codificador:
         for j in range(3):
             self.ativ[b + j] = 0
         if g is not None:
-            self._pop('temperatura', 3, max(5, min(35, g)), 5, 36)
+            self._pop('temperatura', 3, max(5, min(35, int(g))), 5, 36)   # int: rede.clima['temp'] e float
 
     def spikes(self, saida):
         """Sorteia os spikes deste tick; devolve quantos entraram em saida (lista de indices)."""

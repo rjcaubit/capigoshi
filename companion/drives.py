@@ -40,7 +40,8 @@ class Drives:
         self._soma(C.D_ESTRESSE, C.ESTRESSE_MIN)
 
     def avancar(self, minutos, dormindo):
-        """Placa desligada (secao 4): aplica os minutos de uma vez."""
+        """Placa desligada (secao 4): aplica os minutos de uma vez. Usa o self.clima da ultima leitura; na fase 1,
+        quem religa deve atualizar (ou zerar) o clima antes."""
         self.dormindo = dormindo
         for _ in range(minutos):
             self.minuto()
