@@ -16,6 +16,7 @@ class Aprendizado:
         self.ativas = set()                        # colunas com elegibilidade diferente de zero
         self.pisos = pisos
         self.t_decai = 0                           # ultimo tick em que a elegibilidade decaiu
+        self.marcas = {}                           # acao -> ocultos excitatorios ativos quando ela comecou
 
     def passo(self):
         """Depois de rede.passo(): STDP na entrada e elegibilidade na saida."""
@@ -100,6 +101,24 @@ class Aprendizado:
             if e[k]:
                 x = w[k] + ((eta * R * e[k]) >> C.R_SHIFT)
                 w[k] = C.W_MAX if x > C.W_MAX else (piso if x < piso else x)
+
+    def marcar(self, acao):
+        """Guarda os ocultos excitatorios dos ultimos RECENTE ticks. O castigo atrasado (ignorado, 60 s) chega
+        quando a elegibilidade ja zerou; sem a marca, a rede nunca aprende a parar de pedir."""
+        r = self.rede
+        self.marcas[acao] = tuple(h for h in r.recentes(r.rec_h) if h < NE)
+
+    def recompensa_atrasada(self, R, acao, eta):
+        """R vai para a coluna da acao, so nos ocultos marcados quando ela comecou."""
+        hs = self.marcas.get(acao)
+        if not hs:
+            return
+        no, w, piso = self.rede.no, self.rede.w_ho, self.pisos[acao]
+        d = (eta * R * C.MARCA_K) >> 2
+        for h in hs:
+            k = h * no + acao
+            x = w[k] + d
+            w[k] = C.W_MAX if x > C.W_MAX else (piso if x < piso else x)
 
     def homeostase(self):
         """A cada NORM_TICKS (6.5): normaliza a entrada de cada oculto e ajusta o limiar."""

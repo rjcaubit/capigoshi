@@ -52,6 +52,4 @@ sono, refeição dentro da janela do hábito e um teste que passava por acaso.
 
 ## Pendente
 
-- CT03 (hábito): issue #3.
-- `python3 -m companion.sim.aceite todos` sai com código 1 enquanto a #3 não resolver o hábito; use `velocidade` e
-  `silencio` separados para conferir a fase 0.
+- CT03 (hábito): resolvido na issue #3 (`sdd/ISSUE_3/04-acceptance.md`).

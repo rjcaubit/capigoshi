@@ -34,46 +34,24 @@ Ainda não implementado (fase 3): "estresse > 50 bloqueia sons" (seção 4).
 - Seção 6.2: R-STDP em saída→saída; a seção 2 diz que é fixa.
 - Seção 6.3: "shh" com dois dedos; o CST816D só lê um toque (gesto decidido na fase 2).
 
-## Hábito — não resolvido
+## Hábito (issue #3, 2026-11)
 
-Critério: em 5 de 7 dias, taxa de `pedir_carinho` + `chamar_baixo` entre 18h50 e 19h10 >= 2x a taxa das 8h às 22h
-fora da janela. Dono do teste: ausente o dia todo, atende pedidos de carinho das 19h00 às 19h15.
+Resolvido com três acréscimos à fonte. Planejamento e execução: `sdd/ISSUE_3/`.
 
-Em todos os ajustes a Capi ou aprende a pedir carinho em todas as horas, ou para de pedir. A representação de hora
-na camada oculta não separa 19h de 10h o bastante para a recompensa ficar presa ao horário.
+| Acréscimo | Constante | Por quê (medido) |
+|---|---|---|
+| Via hora → saída: 72 células de 20 min ligadas às 100 saídas, crédito no minuto em que a ação começou | `RELOGIO_BINS=72`, `RELOGIO_K_POS=24`, `RELOGIO_K=8`, `RELOGIO_MAX=1500` | A camada oculta não separa 19h de 17h ou 21h (8 neurônios de 3 h); 13 configurações na #2 deram 0 a 2 dias |
+| Marca: ocultos ativos quando um pedido começa recebem o castigo atrasado | `MARCA_K=1` | O "ignorado" chega em 60 s e a elegibilidade zera em ~16 s: a rede nunca aprendia a parar de pedir (9 pedidos/h às 3h) |
+| Solidão: afeto < 20 soma corrente em `pedir_carinho` | `SOLIDAO=(D_AFETO, 200, 'pedir_carinho', 1000)` | Sem exploração a Capi não pede às 19h e não descobre o hábito |
 
-| Ajuste (`python3 -m companion.sim.aceite habito ...`) | Dias ok |
-|---|---|
-| configuração base (execução, D1) | 2 |
-| `P_MAX_HORA=255` | 0 |
-| `HH_DENS_INIB=40` | 1 |
-| `P_MAX_HORA=255 HH_DENS_INIB=40` | 0 |
-| `R_IGNORADO=-10` | 1 |
-| `IH_FORTES=10` | 0 |
-| `IH_FORTES=10 R_IGNORADO=-10` | 1 |
-| `OCULTOS_TEMPO=16` / `32` (índice de luz errado, já corrigido) | 1 / 1 |
-| `OCULTOS_TEMPO=16 ETA_FILHOTE=8` | 0 (pede a toda hora: dia 7 com 12/h na janela e 10/h fora) |
-| `OCULTOS_TEMPO=16 ETA_FILHOTE=8 R_IGNORADO=-10` | 0 (para de pedir) |
-| `OCULTOS_TEMPO=16 HH_DENS_INIB=40 ETA_FILHOTE=8` (D2) | 1 |
-| `OCULTOS_TEMPO=16 HH_DENS_INIB=40 ETA_FILHOTE=8 P_MAX_HORA=255` (D3) | 0 (dia 7: 12/h na janela, 9,8/h fora) |
+Resultado: hábito 5 de 7 dias (semente 1); sementes 1 a 4: [5, 5, 5, 6], média 5,25. Silêncio (12,0 → 0,1 sons/h) e
+velocidade (66 s) continuam passando.
+Na semana normal (3 dias) a Capi pede menos: `pedir_carinho` 498 → 246, `pedir_comida` 544 → 70.
 
-Linha de base da execução, dia a dia:
+A ligação direta (`DIRETO`) continua sobrescrevendo a corrente do relógio: somar deu 4 dias na semente 1.
+O CT03 da #2 tinha a tabela das 13 tentativas sem o relógio; ela continua no histórico do git (commit `01932af`).
 
-```
-habito dia 1: 3.0/h na janela 18h50-19h10, 0.2/h fora ok
-habito dia 2: 0.0/h na janela 18h50-19h10, 0.2/h fora -
-habito dia 3: 3.0/h na janela 18h50-19h10, 0.9/h fora ok
-habito dia 4: 0.0/h na janela 18h50-19h10, 4.2/h fora -
-habito dia 5: 0.0/h na janela 18h50-19h10, 5.2/h fora -
-habito dia 6: 6.0/h na janela 18h50-19h10, 4.0/h fora -
-habito dia 7: 3.0/h na janela 18h50-19h10, 7.2/h fora -
-habito: 2 de 7 dias (meta 5)
-```
-
-Depois da revisão de código (crédito do chamado atendido corrigido, modulação pela fome de antes de comer, e
-refeições do cenário do hábito movidas de 8h/12h/19h para 8h/12h/21h, porque a das 19h00 tocava a Capi bem no
-início da janela), a linha de base ficou em **0 de 7**: a Capi quase não pede carinho em hora nenhuma
-(0,1 a 0,4/h fora, 0/h na janela). Parte dos "ok" de antes vinha da refeição das 19h, não de aprendizado.
-
-Segue na issue #3. Opções levantadas: (a) contar só os dias 3 a 7; (b) o dono do teste atender das 18h50 às 19h20,
-para dar mais recompensas por dia; (c) uma via plástica direta "hora → saída" ao lado da rede.
+Limites conhecidos do relógio: todo R passa por ele, inclusive o custo de som (R < 0 no início de cada ação sonora,
+creditado com K=8 na célula de início), o que reduz o prêmio líquido; isso já está dentro da calibração medida. Se a
+mesma ação recomeça antes do R atrasado (pedido a cada menos de 60 s), o "ignorado" do primeiro credita o minuto
+e a marca do segundo.
