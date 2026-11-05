@@ -13,7 +13,7 @@ Fica na raiz, e não em `docs/`, porque `docs/` é o site publicado no GitHub Pa
 | `vida.py` | ~680 | Motor de comportamento: 23 movimentos (`MOVES`), falas (`FRASES`, `MOVE_FALAS`), reações a toque, colo, sacudida e barulho | — |
 | `rede.py` | ~390 | Wi-Fi intermitente (hora e clima a cada 30 min) e amigos por ESP-NOW no canal 1 | `network`, `espnow`, `ntptime` |
 | `portal.py` | ~260 | Configuração do Wi-Fi pelo celular (rede aberta + QR code + página), grava `wifi.json` | `network`, `socket` |
-| `companion/` | ~1230 | Cérebro SNN do modo Companion (issue #2, fase 0 — ainda não ligado ao `main.py`): `config`, `actions` (catálogo das 100 ações), `encoder`, `snn`, `learn`, `drives`, `reward`, `cerebro`; `sim/` simulador e aceites; `testes/` unittest | — (só `array` e `random`) |
+| `companion/` | ~1230 | Cérebro SNN do modo Companion (issue #2, fase 0 — ainda não ligado ao `main.py`): `config`, `actions` (catálogo das 100 ações), `encoder`, `snn`, `learn`, `drives`, `reward`, `relogio` (hora → saída, issue #3), `cerebro`; `sim/` simulador e aceites; `testes/` unittest | — (só `array` e `random`) |
 | `CALIBRACAO.md` | — | Constantes do cérebro que mudaram em relação à fonte e por quê | — |
 | `sons/` | — | Sons `.raw` 16 kHz 16 bits estéreo; `sons/extra/` fora do git (Pixabay) | — |
 | `deploy.sh` | — | Grava o MicroPython (apaga a flash) e copia os arquivos | `esptool.py`, `mpremote` |
@@ -40,5 +40,6 @@ Fica na raiz, e não em `docs/`, porque `docs/` é o site publicado no GitHub Pa
 
 - **Entrada:** `Cerebro.segundo(sentidos, agora_ms)` uma vez por segundo, de dentro do laço (sem `Timer`); devolve o
   índice da ação em `actions.CATALOGO`. Reações do dono entram por `Cerebro.evento(nome, agora_ms)`.
-- **Testes:** `python3 -m unittest discover -s companion/testes -t .` e `python3 -m companion.sim.aceite todos`.
+- **Testes:** `python3 -m unittest discover -s companion/testes -t .` e `python3 -m companion.sim.aceite todos`
+  (velocidade, silêncio, hábito e `sementes`, ~7 min).
 - **Fonte das regras:** `sdd/ISSUE_2/00-fonte.md`; divergências em `CALIBRACAO.md`.
