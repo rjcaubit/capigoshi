@@ -39,7 +39,7 @@ button[aria-pressed="true"]{background:var(--tinta);color:var(--cartao)}
 .r{font-weight:700;border-radius:8px;padding:2px 8px;color:#fff;font-variant-numeric:tabular-nums}
 .vazio{text-align:center;padding:40px 16px;color:var(--tinta2)}
 .spark{display:grid;grid-template-columns:7.5rem 1fr;align-items:center;gap:8px;min-height:52px}
-.spark svg{width:100%;height:48px;touch-action:none}
+.spark svg{width:100%;height:48px;touch-action:pan-y}
 .dica{font-size:.85rem;color:var(--tinta2);min-height:1.2em}
 dl{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:0}
 dt{color:var(--tinta2)}dd{margin:0;font-variant-numeric:tabular-nums}
@@ -85,7 +85,7 @@ function vontades() {
   var c = cartao('Como ela está', 'As 7 vontades agora. O humor vai de −100 a +100; o resto, de 0 a 100.');
   D.drives.forEach(function (p, i) {
     var v = p[1] / 10, h = p[0] === 'humor';
-    c.append(barra(EMO[p[0]] + ' ' + p[0], h ? v / 100 : v / 100, 'var(--s' + (i + 1) + ')', (h && v > 0 ? '+' : '') + Math.round(v), h));
+    c.append(barra(EMO[p[0]] + ' ' + p[0], v / 100, 'var(--s' + (i + 1) + ')', (h && v > 0 ? '+' : '') + Math.round(v), h));
   });
   if (D.clima.tempo) c.append($('p', {class: 'sub'}, ['Com esse tempo o humor tende a ' + (D.clima.alvo > 0 ? '+' : '') + D.clima.alvo / 10 + '.']));
 }
@@ -101,7 +101,7 @@ function faixas(lista, passo) {            // celulas seguidas com a mesma acao 
 
 function relogio() {
   var R = D.relogio, n = 1440 / R.passo_min, c = cartao('Relógio dos hábitos', 'O anel de fora é o que ela aprendeu a fazer em cada hora; o de dentro, o que aprendeu a evitar. Toque num hábito para achá-lo no relógio.');
-  var NS = 'http://www.w3.org/2000/svg', svg = document.createElementNS(NS, 'svg'), cores = {}, nc = 0, arcos = {};
+  var NS = 'http://www.w3.org/2000/svg', svg = document.createElementNS(NS, 'svg'), cores = {}, nc = 0;
   svg.setAttribute('viewBox', '0 0 260 260'); svg.id = 'relogio'; svg.setAttribute('role', 'img');
   svg.setAttribute('aria-label', 'Relógio de 24 horas com os hábitos aprendidos');
   function cor(a) { if (!(a in cores)) cores[a] = nc < 8 ? 'var(--s' + (++nc) + ')' : 'var(--fraco)'; return cores[a]; }
@@ -179,7 +179,8 @@ function recompensas() {
 }
 
 function historia() {
-  var H = D.horas; if (H.length < 2) return;
+  var H = D.horas;
+  if (H.length < 2) { cartao('Vontades de hora em hora', 'Ainda sem histórico: as linhas aparecem depois das duas primeiras horas de vida.'); return; }
   var c = cartao('Vontades nas últimas ' + H.length + ' horas', 'Uma linha por vontade, de hora em hora. Toque ou passe o dedo para ver o valor.');
   D.drives.forEach(function (p, i) {
     var h = p[0] === 'humor', lo = h ? -1000 : 0, NS = 'http://www.w3.org/2000/svg', s = document.createElementNS(NS, 'svg');
@@ -196,7 +197,7 @@ function historia() {
       k = Math.max(0, Math.min(H.length - 1, k)); mk.setAttribute('x1', X(k)); mk.setAttribute('x2', X(k)); mk.style.display = '';
       val.textContent = (H.length - 1 - k ? 'há ' + (H.length - 1 - k) + ' h: ' : 'última hora: ') + Math.round(H[k][i] / 10); }
     s.onpointerdown = s.onpointermove = aponta;
-    s.onpointerleave = function () { mk.style.display = 'none'; val.textContent = ''; };
+    s.onpointerleave = function (ev) { if (ev.pointerType !== 'mouse') return; mk.style.display = 'none'; val.textContent = ''; };
     c.append($('div', {class: 'spark'}, [$('div', {}, [rot, val]), s]));
   });
 }
@@ -216,7 +217,7 @@ function mostrar(d) {
 function vazio() {
   document.getElementById('app').innerHTML = '<div class="cartao vazio">🔌 Sem dados do cérebro.<br>Abra esta página pelo Wi-Fi da Capi ou gere com <code>python3 -m companion.sim.raiox</code>.</div>';
 }
-if (D) mostrar(D); else fetch('brain.json').then(function (r) { if (!r.ok) throw r; return r.json(); }).then(mostrar).catch(vazio);
+if (D) mostrar(D); else if (location.protocol === 'file:') vazio(); else fetch('brain.json').then(function (r) { if (!r.ok) throw r; return r.json(); }).then(mostrar).catch(vazio);
 </script>
 </body>
 </html>
