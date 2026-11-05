@@ -68,6 +68,16 @@ DIRETO = (
     (D_ESTRESSE, 800, 'esconder_rosto', 500),
 )
 
+# Solidao (issue #3): afeto abaixo do limiar empurra pedir_carinho; e o que faz a Capi explorar ate achar a hora
+SOLIDAO = (D_AFETO, 200, 'pedir_carinho', 1000)
+
+# Via hora -> saida (issue #3, companion/relogio.py)
+RELOGIO_BINS = 72          # celulas de 20 min
+RELOGIO_K_POS = 24         # dw = eta * R * K, premio
+RELOGIO_K = 8              # castigo
+RELOGIO_MAX = 1500         # |peso| maximo (corrente por tick)
+MARCA_K = 1                # castigo atrasado nos ocultos marcados: dw = eta * R * MARCA_K >> 2
+
 # 6. Aprendizado
 A_PLUS = 2                 # 6.1
 A_MINUS = 3                # 6.1
