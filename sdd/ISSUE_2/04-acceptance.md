@@ -1,8 +1,8 @@
 # Aceite — Cérebro SNN da Capi, fase 0 (issue #2)
 
 **Data:** 2026-11-05
-**Branch:** `feature/sdd-issue-2` (não mergeada: CT03 falha)
-**Status:** parcial — 5 de 6 cenários passam; o teste do hábito volta para `/sdd-refine 2`
+**Branch:** `feature/sdd-issue-2`, mergeada na `main` em 2026-11-05
+**Status:** aceita sem o CT03 — 5 de 6 cenários passam; o teste do hábito foi para a issue #3 por decisão do dono do projeto
 
 ## Commits
 
@@ -22,7 +22,7 @@ A fase D (calibração do hábito) não gerou commit: nenhum experimento passou,
 |---|---|---|
 | CT01 velocidade | `python3 -m companion.sim.aceite velocidade` | ✅ 7 dias em 68 s (limite 180 s) |
 | CT02 silêncio | `python3 -m companion.sim.aceite silencio` | ✅ 13,2 sons/h nas 6 primeiras horas → 0,8 sons/h no dia 3 |
-| CT03 hábito | `python3 -m companion.sim.aceite habito` | ❌ 0 de 7 dias (meta 5); ver `CALIBRACAO.md`, seção "Hábito — não resolvido" |
+| CT03 hábito | `python3 -m companion.sim.aceite habito` | ❌ 0 de 7 dias (meta 5) — movido para a #3; ver `CALIBRACAO.md`, seção "Hábito — não resolvido" |
 | CT04 unitários | `python3 -m unittest discover -s companion/testes -t .` | ✅ 22 testes OK |
 | CT05 pré-condição e trava | incluído no CT04 (`test_cooldown_e_trava`) | ✅ |
 | CT06 portabilidade | `micropython companion/sim/fumaca.py` | ✅ `micropython ok` |
@@ -52,6 +52,6 @@ sono, refeição dentro da janela do hábito e um teste que passava por acaso.
 
 ## Pendente
 
-- CT03 (hábito): decidir em `/sdd-refine 2` entre (a) contar só os dias 3 a 7, (b) o dono atender das 18h50 às
-  19h20, ou (c) uma via plástica direta "hora → saída".
-- Merge e fechamento da issue: depois do CT03.
+- CT03 (hábito): issue #3.
+- `python3 -m companion.sim.aceite todos` sai com código 1 enquanto a #3 não resolver o hábito; use `velocidade` e
+  `silencio` separados para conferir a fase 0.

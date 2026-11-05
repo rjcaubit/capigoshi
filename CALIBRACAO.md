@@ -75,5 +75,5 @@ refeições do cenário do hábito movidas de 8h/12h/19h para 8h/12h/21h, porque
 início da janela), a linha de base ficou em **0 de 7**: a Capi quase não pede carinho em hora nenhuma
 (0,1 a 0,4/h fora, 0/h na janela). Parte dos "ok" de antes vinha da refeição das 19h, não de aprendizado.
 
-Opções levadas para `/sdd-refine 2`: (a) contar só os dias 3 a 7; (b) o dono do teste atender das 18h50 às 19h20,
+Segue na issue #3. Opções levantadas: (a) contar só os dias 3 a 7; (b) o dono do teste atender das 18h50 às 19h20,
 para dar mais recompensas por dia; (c) uma via plástica direta "hora → saída" ao lado da rede.

@@ -177,7 +177,11 @@ QUANDO python3 -m companion.sim.aceite silencio
 ENTÃO mais de 2 sons/h nas 6 primeiras horas e menos de 2 sons/h no dia 3 (48-72 h)
 ```
 
-### CT03: Teste do hábito
+### CT03: Teste do hábito (movido para a issue #3 em 2026-11-05)
+
+> Não passou na fase 0 (melhor resultado 2 de 7 dias; 0 de 7 após a revisão). Por decisão do dono do projeto, a
+> fase 0 foi mergeada sem este critério, que segue na issue #3. O comando e o critério abaixo continuam valendo lá.
+
 ```
 DADO um dono ausente o dia todo, que chega às 19h00 e atende pedidos de carinho até 19h15
 QUANDO python3 -m companion.sim.aceite habito
