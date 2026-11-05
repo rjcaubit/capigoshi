@@ -884,7 +884,11 @@ def abrir_wifi():
         if cfg.get('offline'):
             trocar_offline()                             # configurar o Wi-Fi tira do offline
         rede.desligar_wifi()
-        gravou = portal.abrir(tela, botao)
+        resumo = None
+        if cerebro_ativo():
+            ponte.salvar(cer_seg)
+            resumo = ponte.cer.resumo()                  # o raio-X no celular: /raiox
+        gravou = portal.abrir(tela, botao, resumo)
     except Exception as e:
         print('Wi-Fi indisponivel:', e)
         gravou = False

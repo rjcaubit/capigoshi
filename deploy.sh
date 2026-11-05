@@ -51,7 +51,10 @@ mpremote connect "$PORT" \
   + cp "$DIR/vida.py" : \
   + cp "$DIR/rede.py" : \
   + cp "$DIR/portal.py" : \
-  + cp -r "$DIR/sons" :
+  + cp -r "$DIR/sons" : \
+  + cp "$DIR/companion/raiox.html" :raiox.html
+mpremote connect "$PORT" mkdir :companion 2>/dev/null || true
+mpremote connect "$PORT" cp "$DIR"/companion/*.py :companion/      # o cerebro (sem sim/ e testes/)
 
 # Acerta o relógio da placa com a hora deste computador (não precisa de internet)
 AGORA=$(date "+%Y, %-m, %-d, %-H, %-M, %-S")

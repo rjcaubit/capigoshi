@@ -2,12 +2,15 @@
 # A placa vira uma rede aberta chamada "Capigoshi" e mostra um QR code. O celular le o QR,
 # entra na rede e a pagina de configuracao abre sozinha (ou em 192.168.4.1). Ali a pessoa
 # escolhe a rede de casa e digita a senha; a placa grava wifi.json e reinicia ja conectada.
+# Com o cerebro ligado (modo Olhar), a mesma rede mostra o raio-X: /raiox (raiox.html gravado na placa) le o
+# /brain.json, que e o Cerebro.resumo() do momento em que o portal abriu.
 import time, json
 import desenho as d
 
 REDE = 'Capigoshi'
 IP = '192.168.4.1'
 ESPERA_MS = 300000          # 5 min sem ninguem configurar: desiste e volta ao jogo
+RAIOX = 'raiox.html'        # companion/raiox.html, copiado para a raiz da placa
 PORTA_WEB, PORTA_DNS = 80, 53
 
 # QR code de "WIFI:T:nopass;S:Capigoshi;;" (versao 2, correcao L, 25 x 25).
@@ -32,19 +35,23 @@ _CSS = ('body{margin:0;padding:20px 16px 40px;background:#bfe6ff;color:#3a2a10;'
         'background:#fff;font-size:16px;color:#3a2a10}'
         '.ok{width:100%;min-height:54px;margin-top:20px;border:0;border-radius:14px;background:#1fb061;'
         'color:#fff;font-size:20px;font-weight:700;box-shadow:0 5px 0 #147842}'
-        '.e{background:#e24b4a;color:#fff;border-radius:12px;padding:10px 12px}')
+        '.e{background:#e24b4a;color:#fff;border-radius:12px;padding:10px 12px}'
+        '.rx{display:flex;align-items:center;justify-content:center;min-height:52px;border-radius:14px;'
+        'background:#7b4dd8;color:#fff;font-weight:700;text-decoration:none;box-shadow:0 5px 0 #4f2e99}')
 
 
 def _html(s):
     return s.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;')
 
 
-def _pagina(redes, erro=''):
+def _pagina(redes, erro='', raiox=False):
     p = ['<!doctype html><html lang="pt-BR"><meta charset="utf-8">'
          '<meta name="viewport" content="width=device-width,initial-scale=1">'
          '<title>Wi-Fi do Capigoshi</title><style>', _CSS, '</style><main>'
          '<h1>Oi! Me põe na internet? 🐾</h1>'
          '<p>Com Wi-Fi eu acerto a hora sozinho e fico sabendo se lá fora chove ou faz sol.</p>']
+    if raiox:
+        p.append('<p><a class="rx" href="/raiox">🧠 Ver o raio-X do meu cérebro</a></p>')
     if erro:
         p.append('<p class="e">%s</p>' % _html(erro))
     p.append('<form class="c" method="post" action="/salvar">')
@@ -118,28 +125,47 @@ def resposta_dns(pergunta, ip=IP):
             + b'\xc0\x0c\x00\x01\x00\x01\x00\x00\x00\x3c\x00\x04' + bytes(int(x) for x in ip.split('.')))
 
 
-def tratar(pedido, redes):
-    """Pedido HTTP completo (bytes) -> (resposta em bytes, dados do Wi-Fi ou None)."""
+def _http(tipo, dados, codigo=b'200 OK'):
+    return (b'HTTP/1.0 ' + codigo + b'\r\nContent-Type: ' + tipo + b'\r\nCache-Control: no-store\r\n'
+            b'Connection: close\r\nContent-Length: ' + str(len(dados)).encode() + b'\r\n\r\n' + dados)
+
+
+def _arquivo(nome):
+    try:
+        with open(nome, 'rb') as f:
+            return f.read()
+    except OSError:
+        return None
+
+
+def tratar(pedido, redes, resumo=None):
+    """Pedido HTTP completo (bytes) -> (resposta em bytes, dados do Wi-Fi ou None).
+    resumo: o Cerebro.resumo() (dict) para o raio-X, ou None sem cerebro."""
     cab, _, corpo = pedido.partition(b'\r\n\r\n')
     linha = cab.split(b'\r\n')[0].split(b' ')
     metodo = linha[0]
     caminho = linha[1] if len(linha) > 1 else b'/'
     salvo = None
+    if resumo is not None and metodo == b'GET':
+        if caminho.startswith(b'/brain.json'):
+            return _http(b'application/json', json.dumps(resumo).encode()), None
+        if caminho.startswith(b'/raiox'):
+            pagina = _arquivo(RAIOX)
+            if pagina:
+                return _http(b'text/html; charset=utf-8', pagina), None
     if metodo == b'POST' and caminho.startswith(b'/salvar'):
         f = formulario(corpo)
         ssid, senha = f.get('ssid', '').strip(), f.get('senha', '')
         if not ssid or len(ssid.encode()) > 32:
-            html = _pagina(redes, 'Faltou o nome da rede.')
+            html = _pagina(redes, 'Faltou o nome da rede.', resumo is not None)
         elif senha and not 8 <= len(senha.encode()) <= 63:
-            html = _pagina(redes, 'A senha do Wi-Fi tem de 8 a 63 letras. Confere e tenta de novo?')
+            html = _pagina(redes, 'A senha do Wi-Fi tem de 8 a 63 letras. Confere e tenta de novo?', resumo is not None)
         else:
             salvo = {'ssid': ssid, 'senha': senha}
             html = _pagina_salvo(ssid)
     else:
-        html = _pagina(redes)
-    dados = html.encode()
-    return (b'HTTP/1.0 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nCache-Control: no-store\r\n'
-            b'Connection: close\r\nContent-Length: ' + str(len(dados)).encode() + b'\r\n\r\n' + dados), salvo
+        html = _pagina(redes, raiox=resumo is not None)
+    return _http(b'text/html; charset=utf-8', html.encode()), salvo
 
 
 def _ler_pedido(c):
@@ -187,9 +213,9 @@ def _mostrar(tela, linhas, celular=False):
     tela.mostrar()
 
 
-def abrir(tela, botao=None):
+def abrir(tela, botao=None, resumo=None):
     """Abre a rede de configuracao e espera. True = gravou wifi.json (quem chamou reinicia a placa);
-    False = cancelado pelo botao BOOT ou ninguem configurou em 5 minutos."""
+    False = cancelado pelo botao BOOT ou ninguem configurou em 5 minutos. resumo: dict do raio-X ou None."""
     import network, socket
     sta = network.WLAN(network.STA_IF)
     sta.active(True)
@@ -243,7 +269,7 @@ def abrir(tela, botao=None):
                 continue
             try:
                 c.settimeout(3)
-                resposta, salvo = tratar(_ler_pedido(c), redes)
+                resposta, salvo = tratar(_ler_pedido(c), redes, resumo)
                 c.sendall(resposta)
             except Exception as e:
                 print('Portal Wi-Fi:', e)
