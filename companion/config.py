@@ -107,6 +107,12 @@ TH_MIN, TH_MAX = 500, 4000 # calibrado: limites do limiar adaptativo
 ESQUECE_PCT = 1            # 6.5 % por dia em direcao ao inicial
 PISO_SOCIAL = 5            # 6.5 piso dos pesos oculta->saida de Social e Fisiologica
 
+# Raio-X (issue #5, Cerebro.resumo e companion/raiox.html)
+RAIOX_RECS = 200           # 10. ultimas recompensas guardadas
+RAIOX_HORAS = 48           # drives de hora em hora (o simulador aumenta para cobrir todos os dias)
+RAIOX_TOP = 10             # tamanho das listas (mais feitas, gosta, evita)
+RAIOX_HABITO = 200         # |peso| do relogio a partir do qual a celula conta como habito
+
 # 6.3 Recompensas
 R_ESTRELA = 20
 R_CARINHO = 10

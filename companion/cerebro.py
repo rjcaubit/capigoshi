@@ -40,6 +40,12 @@ class Cerebro:
         self.forte = False
         self.log = []                              # ('A', s, acao) e ('R', s, acao, R, motivo), lido pelo sim
         self.ticks_rodados = 0
+        self.agora_s = 0                           # raio-X (issue #5): segundo do ultimo segundo()
+        self.tempo, self.graus = None, None        # ultima previsao recebida
+        self.recs = []                             # (s, acao, R, motivo), as ultimas RAIOX_RECS
+        self.horas = []                            # drives x10 de hora em hora, as ultimas RAIOX_HORAS
+        self.vezes = array('I', [0] * A.N_ACOES)       # decisoes de cada acao desde a meia-noite
+        self.vezes_ontem = array('I', [0] * A.N_ACOES)
 
     # ---- utilidades
     def eta(self):
@@ -87,6 +93,9 @@ class Cerebro:
             self.t['grande'] = agora_ms
         self.resposta = 0 if R > 0 else 2
         self.log.append(('R', agora_ms // 1000, acao, R, motivo))
+        self.recs.append((agora_ms // 1000, acao, R, motivo))
+        if len(self.recs) > C.RAIOX_RECS:
+            del self.recs[0]
 
     def evento(self, nome, agora_ms):
         """Reacao do dono ou do mundo: carinho, estrela, shh, toque, comida, sacudida_*, jogo_fim, desligou..."""
@@ -120,16 +129,24 @@ class Cerebro:
         """Um segundo de vida. s: sentidos (ver sim/mundo.py). Devolve o indice da acao em curso."""
         self.idade_s += 1
         self.minuto = s['minuto']
-        seg = agora_ms // 1000
+        seg = self.agora_s = agora_ms // 1000
         d = self.drives
         if seg % 60 == 0:
-            d.clima = K.efeito(s.get('tempo'), s.get('graus'))
+            self.tempo, self.graus = s.get('tempo'), s.get('graus')
+            d.clima = K.efeito(self.tempo, self.graus)
             d.minuto()
+        if seg % 3600 == 0:
+            self.horas.append(list(d.d))
+            if len(self.horas) > C.RAIOX_HORAS:
+                del self.horas[0]
         if seg % 600 == 0:
             self.rec.habituacao()
         if seg % 86400 == 0:
             self.apr.esquecer()
             self.relogio.esquecer()
+            for o in range(A.N_ACOES):
+                self.vezes_ontem[o] = self.vezes[o]
+                self.vezes[o] = 0
         for R, acao, motivo in self.rec.passo(agora_ms):
             self._aplicar(R, acao, motivo, agora_ms)
         ac = self.acoes
@@ -201,4 +218,60 @@ class Cerebro:
         R = self.rec.acao_iniciada(acao, agora_ms, self.silencio(s['minuto']))
         self._aplicar(R, acao, 'custo_som', agora_ms)
         self.log.append(('A', seg, acao))
+        self.vezes[acao] += 1
         return acao
+
+    # ---- raio-X (issue #5)
+    def resumo(self):
+        """O que o cerebro sabe agora, so com int, str, None, list e dict (vira JSON). Nao muda estado."""
+        d, r, rel = self.drives, self.rede, self.relogio
+        no, ne, top = r.no, C.N_EXC, C.RAIOX_TOP
+        nome = [a[0] for a in A.CATALOGO]
+        delta = [0] * no                           # oculta->saida: quanto cada acao ganhou desde que nasceu
+        w, w0 = r.w_ho, r.w_ho0
+        for h in range(ne):
+            b = h * no
+            for o in range(no):
+                delta[o] += w[b + o] - w0[b + o]
+        ordem = sorted(range(no), key=lambda o: delta[o])
+        habitos, evitas = [], []                   # [celula, acao, peso] do relogio, o mais forte de cada celula
+        rw = rel.w
+        for c in range(C.RELOGIO_BINS):
+            b = c * no
+            mx = mn = 0
+            for o in range(no):
+                if rw[b + o] > rw[b + mx]:
+                    mx = o
+                if rw[b + o] < rw[b + mn]:
+                    mn = o
+            if rw[b + mx] >= C.RAIOX_HABITO:
+                habitos.append([c, nome[mx], rw[b + mx]])
+            if rw[b + mn] <= -C.RAIOX_HABITO:
+                evitas.append([c, nome[mn], rw[b + mn]])
+        mudou = nasceu = 0                         # entrada->oculta: % que o STDP mexeu
+        for k in range(len(r.w_ih)):
+            mudou += abs(r.w_ih[k] - r.w_ih0[k])
+            nasceu += r.w_ih0[k]
+        th = sorted(r.th_h)
+
+        def mais(v):
+            o = sorted(range(no), key=lambda i: -v[i])[:top]
+            return [[nome[i], v[i]] for i in o if v[i]]
+
+        return {
+            'versao': 1, 'semente': self.semente, 'idade_s': self.idade_s, 'agora_s': self.agora_s,
+            'minuto': self.minuto, 'acao': nome[self.acoes.atual], 'dormindo': d.dormindo,
+            'drives': [[C.DRIVES[i], d.d[i]] for i in range(7)],
+            'clima': {'tempo': self.tempo, 'graus': None if self.graus is None else int(self.graus),
+                      'alvo': d.clima[0]},
+            'hoje': mais(self.vezes), 'ontem': mais(self.vezes_ontem),
+            'gosta': [[nome[o], delta[o]] for o in reversed(ordem[-top:]) if delta[o] > 0],
+            'evita': [[nome[o], delta[o]] for o in ordem[:top] if delta[o] < 0],
+            'relogio': {'passo_min': 1440 // C.RELOGIO_BINS, 'max': C.RELOGIO_MAX, 'habitos': habitos,
+                        'evita': evitas},
+            'recompensas': [[s, nome[a], R, m] for s, a, R, m in self.recs],
+            'horas': [list(x) for x in self.horas],
+            'rede': {'eta': self.eta(), 'ruido': r.ruido, 'ticks': self.ticks_rodados,
+                     'ih_mudou_pct': mudou * 100 // nasceu if nasceu else 0,
+                     'limiar': [th[0], th[len(th) // 2], th[-1]]},
+        }
