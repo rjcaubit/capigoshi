@@ -66,9 +66,10 @@ class TestMarca(unittest.TestCase):
         c.minuto = 10 * 60
         c._executar(PC, {'minuto': 10 * 60}, 36000 * 1000)
         self.assertIn(PC, c.apr.marcas)
-        c.minuto = 10 * 60 + 1                                      # o ignorado chega 60 s depois
-        c._aplicar(-5, PC, 'ignorado', 36060 * 1000)
+        c.minuto = 10 * 60 + 10                                     # o ignorado chega depois; o minuto de agora seria 30/31
+        c._aplicar(-5, PC, 'ignorado', 36600 * 1000)
         self.assertLess(c.relogio.w[30 * A.N_ACOES + PC], 0)
+        self.assertEqual(c.relogio.w[31 * A.N_ACOES + PC], 0)       # credita o inicio, nao o minuto da chegada
 
 
 class TestSolidao(unittest.TestCase):

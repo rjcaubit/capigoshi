@@ -50,3 +50,8 @@ Na semana normal (3 dias) a Capi pede menos: `pedir_carinho` 498 → 246, `pedir
 
 A ligação direta (`DIRETO`) continua sobrescrevendo a corrente do relógio: somar deu 4 dias na semente 1.
 O CT03 da #2 tinha a tabela das 13 tentativas sem o relógio; ela continua no histórico do git (commit `01932af`).
+
+Limites conhecidos do relógio: todo R passa por ele, inclusive o custo de som (R < 0 no início de cada ação sonora,
+creditado com K=8 na célula de início), o que reduz o prêmio líquido; isso já está dentro da calibração medida. Se a
+mesma ação recomeça antes do R atrasado (pedido a cada menos de 60 s), o "ignorado" do primeiro credita o minuto
+e a marca do segundo.
