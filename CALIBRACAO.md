@@ -18,6 +18,14 @@ número medido. Antes de gravar na placa, rodar `python3 -m companion.sim.aceite
 | Meta de velocidade | 7 dias < 1 min | 7 dias <= 180 s | 63 s medidos na execução (CPython 3.14, Mac); a meta fica com folga |
 | Teste do silêncio | Capi normal | Capi falante (som x6) | A normal já nasce com < 1 som/h |
 | Teste do hábito | "vencem na janela" | taxa na janela >= 2x a taxa fora, 5 de 7 dias | Do jeito da fonte passa por acaso |
+| R-STDP | todas as sinapses elegíveis | só a coluna da ação que recebe o crédito | As saídas perdedoras também disparam e levariam crédito |
+| Chamado atendido | "+8, qualquer toque" | +8 vai para o chamado que armou o prazo, mesmo que a ação atual já seja outra; afeto não modula o +8 | Antes ia para a ação corrente: `chamar_baixo` (2 s) tinha janela real de 2 s, não 10 s |
+| Horário de silêncio | custo dobrado | custo normal + R -10 na hora (`R_SOM_SILENCIO`) | É a linha da tabela 6.3; o "dobro" da seção 4 ficaria contado duas vezes |
+| Ligação direta do estresse | estresse > 80 → `desligar_tela` (seção 4) | estresse > 80 → `esconder_rosto` | `desligar_tela` não está no catálogo da seção 5 |
+| `ciume` | "outra foi tocada, esta não há 5 min" | só "outra foi tocada" (campo `tocada`, que o `social.py` da fase 5 calcula já com os 5 min) | A gramática da pré-condição não tem tempo desde o último toque por outra Capi |
+| Esquecimento | 1 %/dia | 1 %/dia arredondado para longe de zero (anda ao menos 1) | Com divisão inteira, desvio < 100 nunca andava: a camada oculta→saída nunca esquecia |
+
+Ainda não implementado (fase 3): "estresse > 50 bloqueia sons" (seção 4).
 
 ## Erros da fonte
 
@@ -61,6 +69,11 @@ habito dia 6: 6.0/h na janela 18h50-19h10, 4.0/h fora -
 habito dia 7: 3.0/h na janela 18h50-19h10, 7.2/h fora -
 habito: 2 de 7 dias (meta 5)
 ```
+
+Depois da revisão de código (crédito do chamado atendido corrigido, modulação pela fome de antes de comer, e
+refeições do cenário do hábito movidas de 8h/12h/19h para 8h/12h/21h, porque a das 19h00 tocava a Capi bem no
+início da janela), a linha de base ficou em **0 de 7**: a Capi quase não pede carinho em hora nenhuma
+(0,1 a 0,4/h fora, 0/h na janela). Parte dos "ok" de antes vinha da refeição das 19h, não de aprendizado.
 
 Opções levadas para `/sdd-refine 2`: (a) contar só os dias 3 a 7; (b) o dono do teste atender das 18h50 às 19h20,
 para dar mais recompensas por dia; (c) uma via plástica direta "hora → saída" ao lado da rede.

@@ -93,15 +93,50 @@ class TestRecompensa(unittest.TestCase):
         r = Recompensa()
         chamar = A.INDICE['chamar_baixo']
         r.acao_iniciada(chamar, 0, False)
-        R, acao = r.evento('carinho', 2000, D())
-        self.assertEqual(acao, chamar)
-        self.assertEqual(R, (C.R_CARINHO + C.R_RESPONDEU) * 150 // 100)
+        saida = r.evento('carinho', 2000, D())
+        self.assertIn((C.R_RESPONDEU, chamar), saida)
+        self.assertIn((C.R_CARINHO * 150 // 100, chamar), saida)   # afeto 50 modula o carinho, nao o +8
         self.assertEqual(r.passo(60000), [])         # atendido: nada de 'ignorado'
+
+    def test_chamado_atendido_depois_da_trava(self):
+        r = Recompensa()
+        chamar = A.INDICE['chamar_baixo']
+        r.acao_iniciada(chamar, 0, False)            # dura 2 s
+        r.acao_iniciada(A.QUIETA, 2000, False)
+        saida = r.evento('toque', 5000, D())         # dono atendeu em 5 s (< 10 s)
+        self.assertEqual(saida, [(C.R_RESPONDEU, chamar)])   # credito no chamado, sem -2 para a quieta
+        self.assertEqual(r.passo(60000), [])
 
     def test_toque_em_quieta(self):
         r = Recompensa()
         r.acao_iniciada(A.QUIETA, 0, False)
-        self.assertEqual(r.evento('toque', 500, D())[0], C.R_TOQUE_QUIETA)
+        self.assertEqual(r.evento('toque', 500, D()), [(C.R_TOQUE_QUIETA, A.QUIETA)])
+        self.assertEqual(r.evento('comida', 600, D()), [])   # comida servida nao e 'tocou enquanto quieta'
+
+
+class TestCerebroRecompensa(unittest.TestCase):
+    def test_comida_modulada_pela_fome_de_antes(self):
+        from companion.cerebro import Cerebro
+        cer = Cerebro(1)
+        cer.drives.d[C.D_FOME] = 900
+        cer.rec.acao_iniciada(A.INDICE['pedir_comida'], 0, False)
+        cer.evento('comida', 1000)
+        R = [x[3] for x in cer.log if x[0] == 'R'][0]
+        self.assertEqual(R, C.R_COMIDA * 190 // 100)   # 15 x (1 + 90/100) = 28
+        self.assertEqual(cer.drives.d[C.D_FOME], 900 + C.COMER)
+
+
+class TestEsquecer(unittest.TestCase):
+    def test_peso_aprendido_volta_aos_poucos(self):
+        from companion.snn import Rede
+        from companion.learn import Aprendizado
+        r = Rede(5, 1)
+        a = Aprendizado(r, [0] * 5)
+        r.w_ho[0] = r.w_ho0[0] + 95
+        for _ in range(30):
+            a.esquecer()
+        self.assertLess(r.w_ho[0] - r.w_ho0[0], 95)
+        self.assertGreater(r.w_ho[0] - r.w_ho0[0], 0)
 
 
 if __name__ == '__main__':

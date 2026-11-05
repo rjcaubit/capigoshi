@@ -10,6 +10,7 @@ EVENTO_R = {
 }
 EVENTO_DRIVE = {'carinho': C.D_AFETO, 'comida': C.D_FOME, 'jogo_fim': C.D_TEDIO, 'jogo_repetiu': C.D_TEDIO}
 TOQUES = ('carinho', 'estrela', 'toque', 'comida', 'jogo_fim', 'jogo_repetiu')
+TOQUES_DIRETOS = ('carinho', 'estrela', 'toque')     # so estes contam como 'tocou enquanto estava quieta'
 SEM_HABITUACAO = (A.FISIO,)
 SEMPRE = ('jogo_fim', 'jogo_repetiu', 'social_ok', 'sacudida_forte')   # nao dependem da janela de 3 s
 
@@ -20,7 +21,7 @@ class Recompensa:
         self.acao = A.QUIETA
         self.t_acao = -10 ** 9                     # ms do inicio da ultima acao
         self.n_acao = 0                            # habituacao da acao atual quando comecou
-        self.esperando_toque = None                # (acao, prazo ms, R se o prazo vencer)
+        self.esperando_toque = None                # (acao, prazo ms, inicio ms, habituacao no inicio)
         self.esperando_som = None                  # (acao, prazo ms)
         self.ultimo = (0, '')                      # (R, motivo) para o log e o raio-X
 
@@ -45,18 +46,19 @@ class Recompensa:
                 R += C.R_SOM_SILENCIO
             self.esperando_som = (acao, t_ms + C.JANELA_SOM)
         if acao in A.PEDIDOS:
-            self.esperando_toque = (acao, t_ms + C.JANELA_IGNORADO)
+            self.esperando_toque = (acao, t_ms + C.JANELA_IGNORADO, t_ms, n)
         return R
 
     def evento(self, nome, t_ms, drives):
-        """Reacao do dono. Devolve (R, acao que recebe o credito)."""
+        """Reacao do dono. Chamar antes de mexer nos drives (a modulacao usa o drive de antes).
+        Devolve lista de (R, acao que recebe o credito); o chamado atendido credita o chamado, nao a acao atual."""
         acao = self.acao
+        pedido = None
         if nome in TOQUES:
             self.esperando_som = None
             pedido = self.esperando_toque
             self.esperando_toque = None
-        else:
-            pedido = None
+        saida = []
         R = 0
         dt = t_ms - self.t_acao
         if nome == 'carinho':
@@ -66,16 +68,20 @@ class Recompensa:
         elif nome in EVENTO_R:
             janela = C.JANELA_DESLIGOU if nome == 'desligou' else C.JANELA_CARINHO
             R = EVENTO_R[nome] if nome in SEMPRE or dt <= janela else 0
-        if pedido and acao in A.CHAMADOS and dt <= C.JANELA_RESPOSTA:
-            R += C.R_RESPONDEU
-        if nome in TOQUES and acao == A.QUIETA and R == 0:
-            R = C.R_TOQUE_QUIETA
         if nome in EVENTO_DRIVE and R > 0:
             R = R * (100 + drives.get(EVENTO_DRIVE[nome])) // 100
         if R > 0:
             R = R * 3 // (3 + self.n_acao)
-        self.ultimo = (R, nome)
-        return R, acao
+        atendeu = pedido and pedido[0] in A.CHAMADOS and t_ms - pedido[2] <= C.JANELA_RESPOSTA
+        if atendeu:
+            saida.append((C.R_RESPONDEU * 3 // (3 + pedido[3]), pedido[0]))
+        if nome in TOQUES_DIRETOS and acao == A.QUIETA and R == 0 and not atendeu:
+            R = C.R_TOQUE_QUIETA
+        if R:
+            saida.append((R, acao))
+        if saida:
+            self.ultimo = (saida[-1][0], nome)
+        return saida
 
     def passo(self, t_ms):
         """Chamado a cada segundo: prazos vencidos viram R negativo. Devolve lista de (R, acao, motivo)."""

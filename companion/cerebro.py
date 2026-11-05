@@ -31,7 +31,7 @@ class Cerebro:
         self.ultima = A.QUIETA
         self.resposta = None
         self.forte = False
-        self.log = []                              # (s, acao, top3, R) da ultima decisao, lido pelo sim
+        self.log = []                              # ('A', s, acao) e ('R', s, acao, R, motivo), lido pelo sim
         self.ticks_rodados = 0
 
     # ---- utilidades
@@ -87,6 +87,8 @@ class Cerebro:
             d.interagiu = True
         if nome in ('carinho', 'comida'):
             self.t['recebeu'] = agora_ms
+        for R, acao in self.rec.evento(nome, agora_ms, d):     # antes dos drives: modula pelo valor de antes
+            self._aplicar(R, acao, nome, agora_ms)
         if nome == 'comida':
             d._soma(C.D_FOME, C.COMER)
         elif nome in ('jogo_fim', 'jogo_repetiu'):
@@ -99,8 +101,6 @@ class Cerebro:
             d._soma(C.D_ESTRESSE, C.ESTRESSE_BARULHO)
         elif nome == 'novidade':
             d._soma(C.D_CURIOSIDADE, C.NOVIDADE_CURIOSIDADE)
-        R, acao = self.rec.evento(nome, agora_ms, d)
-        self._aplicar(R, acao, nome, agora_ms)
         if nome in FORTES:
             self.forte = True
 
@@ -125,6 +125,8 @@ class Cerebro:
             self._acordar(agora_ms)
             self.forte = False
             return self._executar(ACORDAR, s, agora_ms)
+        if d.dormindo:
+            self.forte = False                     # estimulo durante sono profundo nao fica guardado para depois
         if ac.travada(seg) and not (self.forte and not d.dormindo):
             self.rede.t += C.DECIDE_TICKS          # o tempo da rede anda mesmo sem simular (traco envelhece)
             return ac.atual

@@ -121,11 +121,20 @@ class TestRSTDP(unittest.TestCase):
         self.assertEqual(r.w_ho[2 * r.no + 1], antes)
 
     def test_so_a_coluna_da_acao_muda(self):
-        r, a = self._elegivel()
-        antes = r.w_ho[2 * r.no + 3]
+        r = rede_limpa(50)
+        a = Aprendizado(r, [0] * 5)
+        preparar(r, 10)
+        r.ult_h[2] = 9
+        r.rec_h[9 % RECENTE] = [2]
+        r.spk_o = [1, 3]                             # as duas colunas ficam elegiveis
+        r.ult_o[1] = r.ult_o[3] = 10
+        a.passo()
+        self.assertGreater(a.e[2 * r.no + 3], 0)
+        antes1, antes3 = r.w_ho[2 * r.no + 1], r.w_ho[2 * r.no + 3]
         r.t += 20
         a.recompensa(10, 1, C.ETA_FILHOTE)
-        self.assertEqual(r.w_ho[2 * r.no + 3], antes)
+        self.assertGreater(r.w_ho[2 * r.no + 1], antes1)
+        self.assertEqual(r.w_ho[2 * r.no + 3], antes3)
 
     def test_punicao_desce_ate_o_piso(self):
         r = rede_limpa(50)

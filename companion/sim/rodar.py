@@ -13,7 +13,8 @@ CENARIOS = {
     'semana': lambda: Dono(),
     'silencio': lambda: Dono(p_som=0.0, p_pedido=0.3),
     'barulho': lambda: Dono(p_som=1.0, p_pedido=0.3),
-    'habito': lambda: Dono(p_som=0.0, p_pedido=0.0, presente=(), carinho_hora=19, p_toque_hora=0),
+    'habito': lambda: Dono(p_som=0.0, p_pedido=0.0, presente=(), carinho_hora=19, p_toque_hora=0,
+                             refeicoes=(8, 12, 21)),     # refeicao fora da janela das 19h
 }
 
 

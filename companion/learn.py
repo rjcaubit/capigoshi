@@ -21,6 +21,8 @@ class Aprendizado:
         """Depois de rede.passo(): STDP na entrada e elegibilidade na saida."""
         r = self.rede
         t = r.t
+        if t - self.t_decai >= C.ELIG_PASSO:      # decai antes de somar: trava longa nao zera o que entra agora
+            self.decair(t)
         w = r.w_ih
         wm = C.W_MAX << C.W_FRAC
         if r.spk_h:                                # pos disparou: potencia quem veio antes (limite suave)
@@ -57,8 +59,6 @@ class Aprendizado:
                     for h in r.spk_h:
                         if h < NE:
                             e[h * no + o] -= d
-        if t - self.t_decai >= C.ELIG_PASSO:
-            self.decair(t)
 
     def decair(self, t):
         """Aplica o decaimento acumulado desde t_decai (6.2), so nas colunas ativas."""
@@ -105,6 +105,7 @@ class Aprendizado:
         """A cada NORM_TICKS (6.5): normaliza a entrada de cada oculto e ajusta o limiar."""
         r = self.rede
         w = r.w_ih
+        wm = C.W_MAX << C.W_FRAC
         for h in range(NH):
             s = 0
             for i in range(NI):
@@ -112,7 +113,7 @@ class Aprendizado:
             if s:
                 for i in range(NI):
                     k = i * NH + h
-                    w[k] = w[k] * r.soma_h[h] // s
+                    w[k] = min(wm, w[k] * r.soma_h[h] // s)
             c = r.cnt_h[h]
             if c * 100 > C.LIMIAR_ALTO * C.NORM_TICKS:
                 r.th_h[h] = min(C.TH_MAX, r.th_h[h] + r.th_h[h] * C.LIMIAR_PASSO // 100)
@@ -126,4 +127,6 @@ class Aprendizado:
         for w, w0 in ((r.w_ih, r.w_ih0), (r.w_ho, r.w_ho0)):
             for k in range(len(w)):
                 d = w0[k] - w[k]
-                w[k] += d * C.ESQUECE_PCT // 100 if d > 0 else -((-d) * C.ESQUECE_PCT // 100)
+                if d:                              # arredonda para longe de zero: anda ao menos 1 por dia
+                    passo = (abs(d) * C.ESQUECE_PCT + 99) // 100
+                    w[k] += passo if d > 0 else -passo

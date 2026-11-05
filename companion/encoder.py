@@ -48,7 +48,7 @@ class Codificador:
             self.rajada[BASE[grupo] + k] = C.RAJADA
 
     def codificar(self, s):
-        """s: dicionario de sentidos (ver sim/sentidos.py). Chamado uma vez por segundo."""
+        """s: dicionario de sentidos (ver sim/mundo.py). Chamado uma vez por segundo."""
         self._pop('hora', 8, s['minuto'], 0, 1440, True)
         self._bin('dia', 0, not s['fim_semana'])
         self._bin('dia', 1, s['fim_semana'])
