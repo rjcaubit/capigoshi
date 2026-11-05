@@ -7,6 +7,7 @@ import math, random
 FEET = 205
 IGNORADO_MS = 600000        # 10 min sem atencao: chora e chama
 ACORDA_MS = 60000           # barulho, sacudida ou toque dormindo: fica 1 min acordado
+OCIOSO = None               # main.py troca pelo cerebro no modo Olhar: f(L, agora, per) no lugar do sorteio
 HTOP = {'capi': 77, 'pato': 95, 'elefante': 75, 'polvo': 71, 'calopsita': 84, 'cachorro': 75,
         'gato': 75, 'et': 81, 'sapinho': 65, 'naufrago': 79}
 NOMES = {'capi': 'Capi', 'pato': 'Pato', 'elefante': 'Elefante', 'polvo': 'Polvo', 'calopsita': 'Calopsita',
@@ -672,10 +673,10 @@ def passo(L, agora, sono, per):
         else:
             falar(L, agora, q['say'], q.get('kind', 'say'))
             L['nextIdle'] = max(L['nextIdle'], agora + 2600)
-    elif agora - L['lastTouch'] > IGNORADO_MS and not sono:
+    elif OCIOSO is None and agora - L['lastTouch'] > IGNORADO_MS and not sono:   # com cerebro, ele decide
         L['lastTouch'] = agora - IGNORADO_MS // 2
         L['lastSad'] = agora
         tocar(L, agora, 'chorar', say=_escolher(L, FRASES['ignorado']))
     elif agora >= L['nextIdle'] and not L['goingSleep']:
-        _ocioso(L, agora, per)
+        (OCIOSO or _ocioso)(L, agora, per)
     return _fim(L, agora, out)

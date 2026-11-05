@@ -264,7 +264,7 @@ def vida_ativa():
 def sono_vida():
     if cfg['modo'] == 'pet':
         return pet['dormindo']
-    return atividade_companion() == 'dormindo'
+    return atividade_companion() == 'dormindo' or (cerebro_ativo() and ponte.dormindo())
 
 
 def sistema(texto, ms=2500):
@@ -282,7 +282,7 @@ def dormindo():
     if vt < L['awakeUntil']:
         return False                          # acordou com grito/sacudida/toque: fica 1 min de pe
     if cfg['modo'] == 'companion':
-        return atividade_companion() == 'dormindo'
+        return atividade_companion() == 'dormindo' or (cerebro_ativo() and ponte.dormindo())
     if cfg['modo'] == 'pet':
         return pet['dormindo']
     return hora_de_dormir(hora_atual())
@@ -648,6 +648,99 @@ def desenhar_visita(agora, cx, topo, ph, na_agua):
     elif visita == 'vagalumes':
         d.vagalumes(agora)
 
+# ------------------------------------------------------------ cerebro (companion/, modo Olhar)
+# A rede neural decide o que o bichinho faz no passeio e aprende com o dono (fonte: sdd/ISSUE_2/00-fonte.md).
+# Toque curto no corpo = carinho; segurar parado no corpo = estrela (elogio); segurar parado no fundo = shh
+# (bronca); sacudir = ralhar. O que ela aprende fica em brain.bin (a cada 10 min e quando dorme).
+SEGURAR_MS = 900            # toque parado por esse tempo vira estrela (no corpo) ou shh (no fundo)
+ponte = None                # companion.placa.Ponte, criada ao entrar no Olhar
+cer_seg, cer_lido = 0, -1000           # segundo do relogio local e ticks_ms em que foi lido
+cer_ativ = ''               # atividade da rotina no ultimo quadro (comida chega ao entrar em 'comendo')
+ultimo_vol = 0              # volume do microfone do ultimo quadro (sentido som_nivel)
+
+
+def cerebro_ativo():
+    return ponte is not None and cfg['modo'] == 'companion' and fase_vida() not in ('ovo', 'estrela')
+
+
+def cerebro_evento(nome):
+    if cerebro_ativo():
+        ponte.evento(nome, cer_seg)
+
+
+def texto_clima():
+    w = rede.wx(cer_seg)
+    if w is None:
+        return ''
+    g = rede.clima.get('temp')
+    return rede.tipo_de(w) + ('|%d graus' % g if g is not None else '')
+
+
+def leitura_sentidos():
+    t = relogio.ler() or (2026, 1, 1, 12, 0, 0)
+    w = rede.wx(cer_seg)
+    g = rede.clima.get('temp')
+    return {'minuto': t[3] * 60 + t[4], 'fim_semana': time.localtime(cer_seg)[6] >= 5,
+            'noite': t[3] < 6 or t[3] >= 18, 'bateria': bat_pct if bat_pct is not None else 80,
+            'carregando': 1 if bat_carregando else 0, 'som_nivel': min(100, int(ultimo_vol) * 100 // LIMIAR_GRITO),
+            'tempo': rede.tipo_de(w) if w is not None else None, 'graus': int(g) if (w is not None and g is not None) else None,
+            'outra': 2 if amigo_perto else 0}
+
+
+def ocioso_cerebro(L, agora, per):
+    """No lugar do sorteio do vida.py: parada, ela passeia devagar; nas outras acoes, espera a proxima decisao."""
+    if ponte.atual in ponte.QUIETAS:
+        r = random.random()
+        if r < 0.35:
+            V.tocar(L, agora, 'andar')
+            return
+        if r < 0.5:
+            V.tocar(L, agora, 'olhar')
+            return
+    L['nextIdle'] = agora + 2000
+
+
+def expressar(acao):
+    """Mostra a acao que o cerebro acabou de escolher: movimento, fala e som."""
+    if not vida_ativa() or L['grab'] or L['fall'] or vt < L['shakeUntil']:
+        return
+    if acao == ponte.ACORDAR:
+        V.acordar(L, vt)
+    elif L['asleep'] or L['goingSleep']:
+        return
+    mov, fala, nome_som = ponte.expressao(acao, relogio_txt(hora_real()), texto_clima())
+    if mov:
+        V.tocar(L, vt, mov, say=fala)
+    elif fala:
+        V.falar(L, vt, fala)
+    if nome_som:
+        som.tocar(nome_som)
+
+
+def atualizar_cerebro(agora):
+    global ponte, cer_seg, cer_lido, cer_ativ
+    if cfg['modo'] != 'companion' or fase_vida() in ('ovo', 'estrela'):
+        if ponte is not None and V.OCIOSO is not None:
+            V.OCIOSO = None
+            ponte.salvar(cer_seg)                   # saiu do Olhar: guarda o que aprendeu
+        return
+    if time.ticks_diff(agora, cer_lido) >= 250:
+        cer_lido = agora
+        cer_seg = relogio.epoch()
+    if ponte is None:
+        from companion.placa import Ponte
+        gc.collect()
+        ponte = Ponte(cer_seg)
+        print('cerebro: semente', ponte.cer.semente, 'idade', ponte.cer.idade_s // 3600, 'h')
+    V.OCIOSO = ocioso_cerebro
+    ativ = atividade_companion()
+    if ativ == 'comendo' and cer_ativ != 'comendo':
+        ponte.evento('comida', cer_seg)
+    cer_ativ = ativ
+    if ponte.atrasada(cer_seg):                     # le os sensores so quando vira o segundo
+        for acao in ponte.passo(cer_seg, leitura_sentidos()):
+            expressar(acao)
+
 
 # ------------------------------------------------------------ internet, clima e amigos (rede.py)
 # (movimento, fala) que ele sorteia de vez em quando conforme o tempo la fora
@@ -791,7 +884,11 @@ def abrir_wifi():
         if cfg.get('offline'):
             trocar_offline()                             # configurar o Wi-Fi tira do offline
         rede.desligar_wifi()
-        gravou = portal.abrir(tela, botao)
+        resumo = None
+        if cerebro_ativo():
+            ponte.salvar(cer_seg)
+            resumo = ponte.cer.resumo()                  # o raio-X no celular: /raiox
+        gravou = portal.abrir(tela, botao, resumo)
     except Exception as e:
         print('Wi-Fi indisponivel:', e)
         gravou = False
@@ -828,9 +925,9 @@ def desenhar_tempo_e_presentes(agora, modo):
 
 # ------------------------------------------------------------ reacoes: grito e sacudida
 def verificar_sensores(agora):
-    global ultima_reacao, piso_mic, grito_seguidos
+    global ultima_reacao, piso_mic, grito_seguidos, ultimo_vol
     g = mov.forca_g()
-    vol = som.volume_mic()
+    vol = ultimo_vol = som.volume_mic()
     if MOSTRAR_VOLUME:
         print('volume do microfone:', vol, 'ruido de fundo:', int(piso_mic))
     sacudiu = abs(g - 1.0) > LIMIAR_SACUDIDA
@@ -849,16 +946,19 @@ def verificar_sensores(agora):
             era_sono = L['asleep']
             V.sacudir(L, vt, min(1.5, 0.6 + abs(g - 1.0) / 2), 500)
             if primeiro:
+                cerebro_evento('sacudida_forte' if abs(g - 1.0) > 1.6 else 'sacudida_leve')
                 som.tocar('susto' if era_sono else 'feliz')
                 pet['alegria'] = lim(pet['alegria'] + (-5 if era_sono else 10))
         else:
             if vt - L['lastNoise'] >= 1500 and vt >= L['shakeUntil']:
                 som.tocar('susto')
+                cerebro_evento('barulho')
             V.barulho(L, vt)
         return
     if time.ticks_diff(agora, ultima_reacao) < 3000:
         return
     ultima_reacao = agora
+    cerebro_evento(('sacudida_forte' if abs(g - 1.0) > 1.6 else 'sacudida_leve') if sacudiu else 'barulho')
     if dormindo():
         iniciar_anim('susto')
         falar('Que susto!')
@@ -1281,9 +1381,10 @@ def pressionar(x, y, agora):
         alt = d.HTOP.get(cfg['personagem'], 75) * (0.62 if fase_vida() == 'filhote' else 1) * lp.get('sy', 1)
         ccx = L['x'] + lp.get('dx', 0)
         pe = d.FEET + lp.get('dy', 0)
-        toque_vida = [x, y, abs(x - ccx) < 34 and pe - alt - 8 < y < pe + 8, False]
+        toque_vida = [x, y, abs(x - ccx) < 34 and pe - alt - 8 < y < pe + 8, False, agora]
         return                                         # decide no soltar: carinho, toque fora ou colo
     if abs(x - cx) < 40 and 120 < y < 212 and not dormindo() and fase_vida() != 'estrela':
+        cerebro_evento('carinho')
         pet['alegria'] = lim(pet['alegria'] + 3)
         iniciar_anim('carinho')
         som.tocar('amor')
@@ -1298,6 +1399,7 @@ def arrastar(x, y):
             toque_vida[3] = True
         if toque_vida[2] and toque_vida[3] and not L['grab'] and vida_ativa():
             V.pegar(L, vt, toque_vida[0], toque_vida[1])     # segurar e arrastar = colo
+            cerebro_evento('colo')
         if L['grab']:
             V.arrastar(L, vt, x, y)
 
@@ -1309,7 +1411,18 @@ def soltar(agora):
         if L['grab']:
             V.soltar(L, vt)
         elif not t[3] and vida_ativa():
+            if cerebro_ativo() and time.ticks_diff(agora, t[4]) >= SEGURAR_MS:
+                if t[2]:                               # estrela: elogio para o que ela acabou de fazer
+                    cerebro_evento('estrela')
+                    V.acordar(L, vt)
+                    V.tocar(L, vt, 'comemorar', say='uma estrela!|eba!')
+                    som.tocar('moeda')
+                else:                                  # shh: bronca
+                    cerebro_evento('shh')
+                    V.tocar(L, vt, 'esconder', say='ta bom...|shh')
+                return
             V.toque(L, vt, t[2])
+            cerebro_evento('carinho' if t[2] else 'toque')
             if t[2]:
                 pet['alegria'] = lim(pet['alegria'] + 3)
                 som.tocar('amor')
@@ -1407,6 +1520,7 @@ def passo(agora, dt):
         atualizar_companion(dt, agora)
     else:
         atualizar_passeio(agora)
+    atualizar_cerebro(agora)
     if vida_ativa():
         L['lento'] = fase_vida() == 'idoso'
         antes = L['bubble']
