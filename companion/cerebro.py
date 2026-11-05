@@ -8,10 +8,12 @@ from companion.snn import Rede
 from companion.learn import Aprendizado
 from companion.drives import Drives
 from companion.reward import Recompensa
+from companion.relogio import Relogio
 
 FORTES = ('sacudida_leve', 'sacudida_forte', 'carinho', 'toque', 'estrela', 'shh', 'comida')
 DORMIR = A.INDICE['dormir']
 ACORDAR = A.INDICE['acordar']
+ATRASADOS = ('ignorado', 'som_sem_resposta')      # chegam depois que a elegibilidade zerou
 
 
 class Cerebro:
@@ -26,6 +28,10 @@ class Cerebro:
         self.rec = Recompensa()
         self.mascara = array('B', [0] * A.N_ACOES)
         self.direto_idx = tuple((d, lim, A.INDICE[n], i) for d, lim, n, i in C.DIRETO)
+        self.solidao = (C.SOLIDAO[0], C.SOLIDAO[1], A.INDICE[C.SOLIDAO[2]], C.SOLIDAO[3])
+        self.relogio = Relogio(A.N_ACOES)
+        self.minuto = 0                            # minuto do dia do ultimo segundo()
+        self.min_acao = array('H', [0] * A.N_ACOES)   # minuto em que cada acao comecou (credito do relogio)
         self.idade_s = 0
         self.t = {}                                # ms do ultimo evento de cada tipo (flags 'recente')
         self.ultima = A.QUIETA
@@ -69,7 +75,11 @@ class Cerebro:
     def _aplicar(self, R, acao, motivo, agora_ms):
         if not R:
             return
-        self.apr.recompensa(R, acao, self.eta())
+        eta = self.eta()
+        self.apr.recompensa(R, acao, eta)
+        if motivo in ATRASADOS:
+            self.apr.recompensa_atrasada(R, acao, eta)
+        self.relogio.recompensa(R, acao, self.min_acao[acao], eta)
         self.drives.recompensa(R)
         self.t['recompensa' if R > 0 else 'punicao'] = agora_ms
         if R >= C.R_ESTRELA:
@@ -108,6 +118,7 @@ class Cerebro:
     def segundo(self, s, agora_ms):
         """Um segundo de vida. s: sentidos (ver sim/mundo.py). Devolve o indice da acao em curso."""
         self.idade_s += 1
+        self.minuto = s['minuto']
         seg = agora_ms // 1000
         d = self.drives
         if seg % 60 == 0:
@@ -116,6 +127,7 @@ class Cerebro:
             self.rec.habituacao()
         if seg % 86400 == 0:
             self.apr.esquecer()
+            self.relogio.esquecer()
         for R, acao, motivo in self.rec.passo(agora_ms):
             self._aplicar(R, acao, motivo, agora_ms)
         ac = self.acoes
@@ -151,9 +163,13 @@ class Cerebro:
         dire = self.rede.direto
         for o in range(A.N_ACOES):
             dire[o] = 0
-        for di, lim, o, corr in self.direto_idx:
+        self.relogio.corrente(self.minuto, dire)
+        for di, lim, o, corr in self.direto_idx:  # sobrescreve o relogio (somar piorou o habito na calibracao)
             if d.d[di] > lim:
                 dire[o] = corr
+        di, lim, o, corr = self.solidao
+        if d.d[di] < lim:
+            dire[o] += corr
         s['drives'] = d.para_rede()
         s['ultima'] = self.ultima
         s['resposta'] = self.resposta
@@ -177,6 +193,9 @@ class Cerebro:
         if acao == DORMIR:
             self.drives.dormindo = True
         self.ultima = acao
+        self.min_acao[acao] = self.minuto
+        if acao in A.PEDIDOS:
+            self.apr.marcar(acao)
         R = self.rec.acao_iniciada(acao, agora_ms, self.silencio(s['minuto']))
         self._aplicar(R, acao, 'custo_som', agora_ms)
         self.log.append(('A', seg, acao))
