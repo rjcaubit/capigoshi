@@ -3,6 +3,7 @@
 from array import array
 from companion import config as C
 from companion.snn import TRACO, RECENTE
+from companion import nucleo as N
 
 NI, NH, NE = C.N_IN, C.N_HID, C.N_EXC
 
@@ -17,6 +18,9 @@ class Aprendizado:
         self.pisos = pisos
         self.t_decai = 0                           # ultimo tick em que a elegibilidade decaiu
         self.marcas = {}                           # acao -> ocultos excitatorios ativos quando ela comecou
+        self._qi = array('H', [0] * max(NI, NH))   # buffers do nucleo: indice e traco dos recentes
+        self._qx = array('H', [0] * max(NI, NH))
+        self._bh = array('H', [0] * NH)
 
     def passo(self):
         """Depois de rede.passo(): STDP na entrada e elegibilidade na saida."""
@@ -24,33 +28,23 @@ class Aprendizado:
         t = r.t
         if t - self.t_decai >= C.ELIG_PASSO:      # decai antes de somar: trava longa nao zera o que entra agora
             self.decair(t)
-        w = r.w_ih
-        wm = C.W_MAX << C.W_FRAC
+        w, qi, qx = r.w_ih, self._qi, self._qx
         if r.spk_h:                                # pos disparou: potencia quem veio antes (limite suave)
-            ult = r.ult_in
-            pre = [(i, TRACO[t - ult[i]]) for i in r.recentes(r.rec_in) if t - ult[i] < RECENTE]
-            for h in r.spk_h:
-                for i, x in pre:
-                    k = i * NH + h
-                    w[k] += (C.A_PLUS * x * (wm - w[k])) >> C.STDP_SHIFT
+            n = N.recentes(r.ult_in, NI, t, 0, TRACO, qi, qx)
+            bh = self._bh
+            for j, h in enumerate(r.spk_h):
+                bh[j] = h
+            N.potenciar(w, qi, qx, n, bh, len(r.spk_h), NH)
         if r.n_in:                                 # pre disparou: deprime quem disparou antes
-            ult = r.ult_h
-            pos = [(h, TRACO[t - ult[h]]) for h in r.recentes(r.rec_h) if 0 < t - ult[h] < RECENTE]
-            if pos:
-                for k in range(r.n_in):
-                    b = r.spk_in[k] * NH
-                    for h, x in pos:
-                        w[b + h] -= (C.A_MINUS * x * w[b + h]) >> C.STDP_SHIFT
+            n = N.recentes(r.ult_h, NH, t, 1, TRACO, qi, qx)
+            if n:
+                N.deprimir(w, r.spk_in, r.n_in, qi, qx, n, NH)
         no, e = r.no, self.e
         if r.spk_o:                                # saida disparou: elegibilidade sobe nos ocultos recentes
-            ult = r.ult_h
-            pre = [h for h in r.recentes(r.rec_h) if h < NE]
+            n = N.recentes(r.ult_h, NE, t, 0, TRACO, qi, qx)
             for o in r.spk_o:
                 self.ativas.add(o)
-                for h in pre:
-                    dt = t - ult[h]
-                    if dt < RECENTE:
-                        e[h * no + o] += (C.A_PLUS * TRACO[dt]) >> 1
+                N.elig_sobe(e, qi, qx, n, o, no)
         if r.spk_h and self.ativas:                # oculto disparou depois da saida: elegibilidade desce
             ult = r.ult_o
             for o in self.ativas:
@@ -68,25 +62,7 @@ class Aprendizado:
             return
         self.t_decai += n * C.ELIG_PASSO
         no, e = self.rede.no, self.e
-        mortas = []
-        for o in self.ativas:
-            vivo = False
-            for h in range(NE):
-                k = h * no + o
-                x = e[k]
-                if x:
-                    if n > 20:
-                        x = 0
-                    else:
-                        for _ in range(n):
-                            x -= (x * C.ELIG_MUL) >> C.ELIG_SHIFT
-                            if -8 < x < 8:
-                                x = 0
-                                break
-                    e[k] = x
-                    vivo = vivo or x != 0
-            if not vivo:
-                mortas.append(o)
+        mortas = [o for o in self.ativas if not N.decair_col(e, o, no, NE, n)]
         for o in mortas:
             self.ativas.discard(o)
 
@@ -106,7 +82,8 @@ class Aprendizado:
         """Guarda os ocultos excitatorios dos ultimos RECENTE ticks. O castigo atrasado (ignorado, 60 s) chega
         quando a elegibilidade ja zerou; sem a marca, a rede nunca aprende a parar de pedir."""
         r = self.rede
-        self.marcas[acao] = tuple(h for h in r.recentes(r.rec_h) if h < NE)
+        t, ult = r.t, r.ult_h
+        self.marcas[acao] = tuple(h for h in range(NE) if t - ult[h] < RECENTE)
 
     def recompensa_atrasada(self, R, acao, eta):
         """R vai para a coluna da acao, so nos ocultos marcados quando ela comecou."""
@@ -123,16 +100,8 @@ class Aprendizado:
     def homeostase(self):
         """A cada NORM_TICKS (6.5): normaliza a entrada de cada oculto e ajusta o limiar."""
         r = self.rede
-        w = r.w_ih
-        wm = C.W_MAX << C.W_FRAC
+        N.normalizar(r.w_ih, r.soma_h, NI, NH)
         for h in range(NH):
-            s = 0
-            for i in range(NI):
-                s += w[i * NH + h]
-            if s:
-                for i in range(NI):
-                    k = i * NH + h
-                    w[k] = min(wm, w[k] * r.soma_h[h] // s)
             c = r.cnt_h[h]
             if c * 100 > C.LIMIAR_ALTO * C.NORM_TICKS:
                 r.th_h[h] = min(C.TH_MAX, r.th_h[h] + r.th_h[h] * C.LIMIAR_PASSO // 100)

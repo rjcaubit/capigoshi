@@ -4,10 +4,11 @@ import random
 from array import array
 from companion import config as C
 from companion.encoder import BASE
+from companion import nucleo as N
 
 NI, NH, NE = C.N_IN, C.N_HID, C.N_EXC
 NF = C.N_IN_FONTE                 # entradas da fonte; as do clima (issue #4) sao sorteadas no fim do __init__
-RECENTE = 16                      # ticks guardados para o STDP (alem disso o traco ja nao muda peso)
+RECENTE = N.RECENTE               # ticks guardados para o STDP (alem disso o traco ja nao muda peso)
 
 # traco pre/pos: 255 * (15/16)^dt, zero a partir de RECENTE (6.1: decai 1/16 por tick)
 TRACO = array('H', [0] * (RECENTE + 1))
@@ -53,8 +54,6 @@ class Rede:
         self.n_in = 0
         self.spk_h = []                            # spikes ocultos deste tick
         self.spk_o = []                            # spikes de saida deste tick
-        self.rec_in, self.rec_h, self.rec_o = [[] for _ in range(RECENTE)], [[] for _ in range(RECENTE)], \
-            [[] for _ in range(RECENTE)]
         self.direto = array('h', [0] * no)        # corrente fixa drive -> saida
         self.ruido = C.NOISE
         self._rtab = array('h', [ri(-C.NOISE, C.NOISE) for _ in range(1024)])
@@ -68,6 +67,11 @@ class Rede:
         self.w_ih0 = array('h', self.w_ih)
         self.soma_h = array('i', [sum(self.w_ih[i * NH + h] for i in range(NI)) for h in range(NH)])  # alvo da normalizacao
         self.contagem = array('H', [0] * no)
+        self._I = array('i', [0] * NH)             # buffers do nucleo (companion/nucleo.py)
+        self._J = array('i', [0] * no)
+        self._bh = array('H', [0] * NH)
+        self._bo = array('H', [0] * no)
+        self._ant = bytearray(no)
 
     def novo_ruido(self, amplitude):
         self.ruido = amplitude
@@ -80,79 +84,34 @@ class Rede:
         t = self.t = self.t + 1
         n_in = self.n_in = cod.spikes(self.spk_in)
         spk_in, ult_in = self.spk_in, self.ult_in
-        I = [0] * NH
-        w_ih = self.w_ih
         for k in range(n_in):
-            i = spk_in[k]
-            ult_in[i] = t
-            b = i * NH
-            for h in range(NH):
-                I[h] += w_ih[b + h]
+            ult_in[spk_in[k]] = t
+        I = self._I
+        N.soma_ih(I, self.w_ih, spk_in, n_in, NH)
         ini, pos, whh = self.hh_ini, self.hh_pos, self.hh_w
         for h in self.spk_h:                      # recorrencia: spikes ocultos do tick anterior
             for k in range(ini[h], ini[h + 1]):
                 I[pos[k]] += whh[k] << C.W_FRAC
         rt, rk = self._rtab, self._rk + random.getrandbits(4)
-        v, ref, th, cnt, ult_h = self.v_h, self.ref_h, self.th_h, self.cnt_h, self.ult_h
-        spk_h = []
-        for h in range(NH):
-            if ref[h]:
-                ref[h] -= 1
-                continue
-            vv = v[h]
-            vv += (I[h] >> (C.I_SCALE + C.W_FRAC)) - ((vv - C.V_REST) >> C.TAU_SHIFT) + rt[(rk + h) & 1023]
-            if vv >= th[h]:
-                vv = C.V_RESET
-                ref[h] = C.REFRAC
-                cnt[h] += 1
-                ult_h[h] = t
-                spk_h.append(h)
-            v[h] = vv
+        bh, bo, ant = self._bh, self._bo, self._ant
+        nh = N.oculta(I, self.v_h, self.ref_h, self.th_h, self.cnt_h, self.ult_h, rt, bh, rk, t, NH)
+        spk_h = [bh[k] for k in range(nh)]
         no = self.no
-        J = [0] * no
-        w_ho = self.w_ho
-        for h in spk_h:
-            if h < NE:
-                b = h * no
-                for o in range(no):
-                    J[o] += w_ho[b + o]
-        lat = C.LATERAL * len(self.spk_o)
-        v, ref, ult_o, cont, dire = self.v_o, self.ref_o, self.ult_o, self.contagem, self.direto
+        N.soma_ho(self._J, self.w_ho, bh, nh, no, NE)
         anteriores = self.spk_o
-        spk_o = []
+        lat = C.LATERAL * len(anteriores)
+        for o in anteriores:
+            ant[o] = 1
         rk += NH
-        for o in range(no):
-            if not mascara[o]:
-                v[o] = C.V_REST
-                continue
-            if ref[o]:
-                ref[o] -= 1
-                continue
-            vv = v[o]
-            inib = lat - C.LATERAL if o in anteriores else lat
-            vv += J[o] * C.I_OUT_MUL + dire[o] - inib - ((vv - C.V_REST) >> C.TAU_SHIFT) + rt[(rk + o) & 1023]
-            if vv >= C.V_TH:
-                vv = C.V_RESET
-                ref[o] = C.REFRAC
-                ult_o[o] = t
-                cont[o] += 1
-                spk_o.append(o)
-            v[o] = vv
+        n = N.saida(self._J, self.v_o, self.ref_o, self.ult_o, self.contagem, self.direto, mascara, rt, ant, bo,
+                    rk, t, lat, no)
+        for o in anteriores:
+            ant[o] = 0
+        spk_o = [bo[k] for k in range(n)]
         self._rk = rk & 1023
         self.spk_h, self.spk_o = spk_h, spk_o
-        s = t % RECENTE
-        self.rec_in[s] = [spk_in[k] for k in range(n_in)]
-        self.rec_h[s] = spk_h
-        self.rec_o[s] = spk_o
 
     def zerar_contagem(self):
         c = self.contagem
         for o in range(self.no):
             c[o] = 0
-
-    def recentes(self, rec):
-        """Indices que dispararam nos ultimos RECENTE ticks (sem repeticao)."""
-        vistos = set()
-        for lista in rec:
-            vistos.update(lista)
-        return vistos
