@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Capigoshi — bichinho virtual de código aberto para ESP32, criado por um menino de 9 anos</title>
-<meta name="description" content="Um bichinho virtual de código aberto, criado pelo João, de 9 anos. Mora numa plaquinha com tela touch, nasce de um ovo, dança, fala com voz de minion e um dia vira estrela.">
+<title>Capigoshi — bichinho virtual de código aberto para ESP32, com um cérebro que aprende</title>
+<meta name="description" content="Um bichinho virtual de código aberto, criado pelo João, de 9 anos. Mora numa plaquinha com tela touch, tem um cérebro de neurônios que aprende com você, nasce de um ovo, dança e um dia vira estrela.">
 <link rel="canonical" href="https://capigoshi.mundocapi.com/">
 <meta name="robots" content="index, follow, max-image-preview:large">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -15,7 +15,7 @@
 <meta property="og:title" content="Capigoshi — bichinho virtual de código aberto">
 <meta name="twitter:card" content="summary_large_image">
 <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"Organization","@id":"https://mundocapi.com/#org","name":"MundoCapi","url":"https://mundocapi.com/"},{"@type":"SoftwareSourceCode","name":"Capigoshi","description":"Bichinho virtual de código aberto em MicroPython para ESP32-S3 com tela touch.","programmingLanguage":"MicroPython","runtimePlatform":"ESP32-S3","url":"https://capigoshi.mundocapi.com/","inLanguage":"pt-BR","publisher":{"@id":"https://mundocapi.com/#org"}}]}</script>
-<meta property="og:description" content="Bichinho virtual de código aberto em MicroPython: 9 personagens, 21 movimentos, do ovo à estrela.">
+<meta property="og:description" content="Bichinho virtual de código aberto em MicroPython, com uma rede neural de spikes que aprende com o dono: 10 personagens, 100 ações, do ovo à estrela.">
 <meta property="og:image" content="https://capigoshi.mundocapi.com/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -164,6 +164,22 @@ p { margin: 0; }
 }
 .tufos { position: absolute; inset: 0; background-image: radial-gradient(4px 9px at 50% 100%, var(--grama-e) 98%, transparent); background-size: 64px 30px; background-repeat: repeat-x; background-position: 10px 70px; opacity: .9; }
 
+
+/* cerebro (v1.5) */
+.cerebro { display: grid; grid-template-columns: 1.15fr .85fr; gap: 40px; align-items: start; }
+.cerebro .passos-c { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.cerebro .passos-c li { display: grid; grid-template-columns: 48px 1fr; gap: 14px; align-items: start; background: var(--papel); border: 2px solid var(--linha); border-radius: 18px; padding: 14px; }
+.cerebro .passos-c i { font-style: normal; width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; font-size: 1.5rem; background: var(--creme); border: 2px solid var(--linha); }
+.cerebro .passos-c b { font: 600 1.08rem var(--display); color: var(--tinta); display: block; }
+.cerebro .passos-c span { color: var(--suave); }
+.conta { margin-top: 18px; background: var(--codigo); color: var(--codigo-txt); border-radius: 16px; padding: 14px 16px; font: 500 .95rem/1.8 'Cambria Math', Georgia, serif; overflow-x: auto; white-space: nowrap; }
+.conta em { color: var(--amarelo); font-style: italic; }
+.raiox { display: grid; gap: 12px; justify-items: center; text-align: center; }
+.raiox img { width: min(300px, 100%); height: auto; border-radius: 22px; border: 3px solid var(--tinta); box-shadow: 0 6px 0 var(--tinta); }
+.raiox p { color: var(--suave); font-size: .95rem; max-width: 34ch; }
+.novas { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-top: 32px; }
+.novas .cartao b { font: 600 1.1rem var(--display); color: var(--tinta); }
+
 /* ── Secoes ────────────────────────────────────────────────────────────── */
 section { padding-block: 72px; }
 .titulo { display: grid; gap: 12px; max-width: 64ch; margin-bottom: 32px; }
@@ -259,6 +275,8 @@ footer a { color: #fff7e8; }
   .elenco { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 }
 @media (max-width: 940px) {
+  .cerebro { grid-template-columns: 1fr; }
+  .novas { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .joao-grade { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .hero { grid-template-columns: 1fr; gap: 10px; }
   .hero-texto { padding-bottom: 20px; }
@@ -267,6 +285,7 @@ footer a { color: #fff7e8; }
   .aberto { grid-template-columns: 1fr; }
 }
 @media (max-width: 640px) {
+  .novas { grid-template-columns: 1fr; }
   .joao-grade { grid-template-columns: 1fr; gap: 12px; }
   body { font-size: 16px; }
   section { padding-block: 48px; }
@@ -309,6 +328,7 @@ footer a { color: #fff7e8; }
     <nav aria-label="Seções">
       <a href="#elenco">Elenco</a>
       <a href="#vivo">Como ele vive</a>
+      <a href="#cerebro">O cérebro</a>
       <a href="#ciclo">Do ovo à estrela</a>
       <a href="#joao">Feito pelo João</a>
       <a href="#monte">Monte o seu</a>
@@ -319,13 +339,13 @@ footer a { color: #fff7e8; }
     <div class="hero-texto">
       <p class="pixel" style="color:var(--tinta);opacity:.75;margin-bottom:18px">bichinho virtual · código aberto</p>
       <h1>Um bichinho que mora <span>numa plaquinha.</span></h1>
-      <p class="sub">Nasce de um ovo, dança, fala com voz de minion, leva susto com barulho e, um dia, vira estrela no céu.</p>
+      <p class="sub">Nasce de um ovo, dança, fala com voz de minion, aprende os seus horários com um cérebro de neurônios e, um dia, vira estrela no céu.</p>
       <div class="acoes">
         <a class="btn btn-forte" href="#monte">Montar o meu</a>
         <a class="btn btn-calmo" href="https://github.com/rjcaubit/capigoshi" rel="noopener">Ver o código</a>
         <a class="btn btn-celular" href="celular.html">Jogar no celular</a>
       </div>
-      <p class="selo pixel">MicroPython · MIT · sem imagens, só código</p>
+      <p class="selo pixel">v1.5 · MicroPython · MIT · cérebro de spikes</p>
     </div>
 
     <div class="aparelho">
@@ -391,6 +411,8 @@ footer a { color: #fff7e8; }
         </div>
         <ul class="gestos">
           <li><b>Tocar nele</b><span>Ri, comemora e agradece o carinho. Cinco toques seguidos: "chega de cosquinha!"</span></li>
+          <li><b>Segurar o dedo nele</b><span>No modo Olhar, vira uma ⭐ estrela: elogio para o que ele acabou de fazer. Ele comemora e aprende a repetir.</span></li>
+          <li><b>Segurar no fundo</b><span>No modo Olhar, é um 🤫 shh: bronca de leve. Ele se esconde e passa a fazer aquilo menos.</span></li>
           <li><b>Segurar e arrastar</b><span>Colo. Ele estica, arregala os olhos e pede para descer.</span></li>
           <li><b>Sacudir a placa</b><span>Grita, chacoalha e fica tonto, com estrelinhas girando.</span></li>
           <li><b>Fazer barulho</b><span>Leva susto e olha em volta. Dormindo, acorda por um minuto.</span></li>
@@ -407,6 +429,40 @@ footer a { color: #fff7e8; }
         <figure><img src="img/tela_passear_auto.png" alt="Caramelo andando no modo Passear e pegando moedas"><figcaption>Passear</figcaption></figure>
         <figure><img src="img/tela_menu_aberto_sim.png" alt="Menu de ajustes puxado do topo"><figcaption>Menu puxado do topo</figcaption></figure>
         <figure><img src="img/tela_vida_estrela.png" alt="Céu da noite com a estrela do Pato"><figcaption>A estrela do Pato</figcaption></figure>
+      </div>
+    </div>
+  </section>
+
+  <section id="cerebro">
+    <div class="envelope">
+      <div class="titulo">
+        <p class="pixel" style="color:var(--laranja-e)">novo na v1.5</p>
+        <h2>Agora ele tem um cérebro. E aprende com você.</h2>
+        <p>No modo Olhar, quem decide o que ele faz é uma rede de uns 300 neurônios que disparam spikes, como os de verdade. Ela roda dentro da plaquinha, só com números inteiros, em uns 50 KB. A cada segundo escolhe uma de 100 ações, e o que você faz depois vira nota.</p>
+      </div>
+      <div class="cerebro">
+        <div>
+          <ol class="passos-c">
+            <li><i aria-hidden="true">👀</i><div><b>Sente</b><span>A hora, os toques, as sacudidas, o barulho, a bateria, o clima e as 7 vontades dele (fome, energia, humor, tédio, afeto, curiosidade e estresse) viram spikes em 107 neurônios de entrada.</span></div></li>
+            <li><i aria-hidden="true">⚡</i><div><b>Pensa</b><span>Os spikes passam por 96 neurônios ocultos e chegam em 100 neurônios de ação. Em 1 segundo (20 passos de 50 ms), vence a ação que disparou mais.</span></div></li>
+            <li><i aria-hidden="true">⭐</i><div><b>Aprende</b><span>Estrela vale +20, carinho +10, shh −15, chamado ignorado −5. Cada nota reforça ou enfraquece só as ligações que levaram àquela ação, e um relógio de 72 células de 20 minutos guarda <em>a hora</em> em que ela compensa.</span></div></li>
+            <li><i aria-hidden="true">💾</i><div><b>Lembra</b><span>Tudo fica gravado na placa a cada 10 minutos e quando ele dorme. Desligou e ligou: ele continua sabendo, e acorda com fome.</span></div></li>
+          </ol>
+          <div class="conta" aria-label="Fórmula do aprendizado por recompensa">Δ<em>w</em> = <em>η</em> · <em>R</em> · <em>e</em> / 1024 &nbsp;&nbsp;·&nbsp;&nbsp; <em>v</em> ← <em>v</em> + <em>I</em> − <em>v</em>/16 + ruído</div>
+          <div class="acoes">
+            <a class="btn btn-forte" href="cerebro.html">Ver a matemática passo a passo</a>
+          </div>
+        </div>
+        <figure class="raiox">
+          <img src="img/raiox_relogio.png" width="390" height="844" alt="Raio-X do cérebro no celular: um anel de 24 horas com o hábito aprendido em cada célula de 20 minutos" loading="lazy">
+          <p><b style="color:var(--tinta)">Raio-X do cérebro.</b> Segure o BOOT por 3 segundos e abra no celular: vontades, hábitos de cada horário, o que ele mais fez e o que aprendeu a evitar.</p>
+        </figure>
+      </div>
+      <div class="novas">
+        <div class="cartao"><b>Hábitos de verdade</b><p>Dê carinho sempre às 19h e, em poucos dias, é às 19h que ele vem pedir. No simulador, acerta a janela em 5 a 6 de 7 dias.</p></div>
+        <div class="cartao"><b>Para de fazer barulho à toa</b><p>Som que ninguém responde custa caro. Uma Capi falante, ignorada, caiu de 12 para 0,1 sons por hora.</p></div>
+        <div class="cartao"><b>Wi-Fi pelo celular</b><p>BOOT por 3 segundos, aponte a câmera para o QR code e escolha a rede. Hora e clima chegam sozinhos, e o céu acompanha.</p></div>
+        <div class="cartao"><b>Amigos por perto</b><p>Duas placas encostadas se reconhecem pelo rádio, sem internet, fazem festa e trocam presentes.</p></div>
       </div>
     </div>
   </section>

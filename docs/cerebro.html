@@ -1,0 +1,539 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Como pensa o Capigoshi: o cérebro de spikes, com a matemática</title>
+<meta name="description" content="A matemática e a lógica do cérebro do Capigoshi: uma rede neural de spikes (LIF) em números inteiros, com STDP, STDP por recompensa e um relógio de hábitos, rodando num ESP32-S3.">
+<link rel="canonical" href="https://capigoshi.mundocapi.com/cerebro.html">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Capigoshi">
+<meta property="og:locale" content="pt_BR">
+<meta property="og:url" content="https://capigoshi.mundocapi.com/cerebro.html">
+<meta property="og:title" content="Como pensa o Capigoshi">
+<meta property="og:description" content="Uma rede neural de spikes que aprende com o dono, em 50 KB e só com números inteiros. A matemática, passo a passo.">
+<meta property="og:image" content="https://capigoshi.mundocapi.com/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Como pensa o Capigoshi: o cérebro de spikes, com a matemática","inLanguage":"pt-BR","url":"https://capigoshi.mundocapi.com/cerebro.html","about":["Spiking neural network","STDP","Reward-modulated STDP","MicroPython","ESP32-S3"],"publisher":{"@type":"Organization","name":"MundoCapi","url":"https://mundocapi.com/"}}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&family=Press+Start+2P&display=swap">
+<style>
+/* Mesmas cores da landing (direcao 1c): claro = Dia, escuro = Noite. */
+:root {
+  --ceu-alto: #5cb2f8;  --ceu-meio: #82c8fa;  --ceu-mix: #96d4fb;  --horizonte: #aadefc;
+  --grama: #2eb060;     --grama-e: #1e7c42;
+  --creme: #fff7e8;     --papel: #fffdf8;     --tinta: #281e28;   --texto: #392810;
+  --suave: #6b5a48;     --laranja: #f28c5a;   --laranja-e: #c8612f; --amarelo: #ffc820;
+  --roxo: #7a4fd6;      --roxo-cl: #efe8ff;   --azul: #2f7fd8;    --verde: #1f9d57;  --vermelho: #d4483b;
+  --linha: rgba(57, 40, 16, .14);
+  --codigo: #312831;    --codigo-txt: #fff7e8;
+  --display: 'Fredoka', ui-rounded, 'Arial Rounded MT Bold', system-ui, sans-serif;
+  --corpo: 'Nunito', ui-rounded, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --pixel: 'Press Start 2P', ui-monospace, Menlo, monospace;
+  --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ceu-alto: #0e1234;  --ceu-meio: #121840;  --ceu-mix: #171d48;  --horizonte: #1c2250;
+    --grama: #144630;     --grama-e: #0e3222;
+    --creme: #1b1f45;     --papel: #151a3c;     --tinta: #fff7e8;   --texto: #efe6d2;
+    --suave: #b3a99a;     --laranja: #f7a173;   --laranja-e: #ffbe94; --amarelo: #ffd54a;
+    --roxo: #b79cff;      --roxo-cl: #2a2560;   --azul: #7db7ff;    --verde: #5fd394;  --vermelho: #ff8a7e;
+    --linha: rgba(255, 247, 232, .14);
+    --codigo: #0b0e26;    --codigo-txt: #fff7e8;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --ceu-alto: #0e1234;  --ceu-meio: #121840;  --ceu-mix: #171d48;  --horizonte: #1c2250;
+  --grama: #144630;     --grama-e: #0e3222;
+  --creme: #1b1f45;     --papel: #151a3c;     --tinta: #fff7e8;   --texto: #efe6d2;
+  --suave: #b3a99a;     --laranja: #f7a173;   --laranja-e: #ffbe94; --amarelo: #ffd54a;
+  --roxo: #b79cff;      --roxo-cl: #2a2560;   --azul: #7db7ff;    --verde: #5fd394;  --vermelho: #ff8a7e;
+  --linha: rgba(255, 247, 232, .14);
+  --codigo: #0b0e26;    --codigo-txt: #fff7e8;
+  color-scheme: dark;
+}
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--papel); color: var(--texto); font: 400 17px/1.65 var(--corpo); -webkit-font-smoothing: antialiased; }
+a { color: var(--laranja-e); font-weight: 700; }
+:focus-visible { outline: 3px solid var(--laranja); outline-offset: 3px; border-radius: 6px; }
+h1, h2, h3 { font-family: var(--display); color: var(--tinta); text-wrap: balance; margin: 0; line-height: 1.1; }
+h2 { font-size: clamp(1.7rem, 4vw, 2.4rem); font-weight: 700; }
+h3 { font-size: 1.25rem; font-weight: 600; margin-top: 8px; }
+p { margin: 0; }
+img, svg { max-width: 100%; display: block; }
+.envelope { max-width: 860px; margin: 0 auto; padding-inline: 16px; }
+.pixel { font-family: var(--pixel); font-size: .6rem; letter-spacing: .04em; line-height: 1.6; }
+code { font-family: var(--mono); font-size: .9em; background: var(--creme); border: 1px solid var(--linha); border-radius: 6px; padding: 1px 5px; }
+
+/* topo */
+.ceu { background: linear-gradient(var(--ceu-alto) 0 25%, var(--ceu-meio) 25% 50%, var(--ceu-mix) 50% 75%, var(--horizonte) 75% 100%); padding-top: env(safe-area-inset-top, 0px); }
+.barra { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 16px; }
+.marca { display: flex; align-items: center; gap: 10px; text-decoration: none; font: 700 1.3rem var(--display); color: var(--tinta); }
+.marca i { width: 26px; height: 22px; border-radius: 50% 50% 46% 46%; background: #a87046; box-shadow: inset 0 -4px 0 #7a4f2e; }
+.voltar { display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border-radius: 12px; border: 2px solid var(--tinta); color: var(--tinta); text-decoration: none; font: 600 1rem var(--display); }
+.topo { padding-block: 28px 56px; display: grid; gap: 16px; }
+.topo h1 { font-size: clamp(2.2rem, 6vw, 3.6rem); letter-spacing: -.02em; }
+.topo h1 span { color: var(--laranja-e); display: block; }
+.topo .sub { font-size: 1.15rem; color: var(--tinta); font-weight: 600; max-width: 46ch; }
+.chao { height: 40px; background: var(--grama); border-top: 6px solid var(--grama-e); }
+
+/* corpo */
+main { padding-block: 40px 72px; }
+section { padding-block: 36px; border-bottom: 2px dashed var(--linha); display: grid; gap: 16px; }
+section:last-of-type { border-bottom: 0; }
+.num { display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: var(--amarelo); color: #281e28; border: 2px solid var(--tinta); font: 700 1.2rem var(--display); margin-bottom: 8px; }
+.indice { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
+.indice a { display: flex; align-items: center; min-height: 44px; padding: 8px 14px; border-radius: 12px; background: var(--creme); border: 2px solid var(--linha); text-decoration: none; color: var(--tinta); font-weight: 700; }
+
+.formula {
+  background: var(--roxo-cl); border: 2px solid var(--roxo); border-radius: 16px; padding: 14px 16px;
+  font: 500 1.05rem/1.9 'Cambria Math', 'STIX Two Math', Georgia, 'Times New Roman', serif; color: var(--tinta);
+  overflow-x: auto; white-space: nowrap;
+}
+.formula var { font-style: italic; }
+.formula .rot { font: 700 .72rem var(--corpo); text-transform: uppercase; letter-spacing: .06em; color: var(--roxo); display: block; line-height: 1.4; margin-bottom: 4px; white-space: normal; }
+.caixa { background: var(--creme); border: 2px solid var(--linha); border-radius: 16px; padding: 14px 16px; display: grid; gap: 8px; }
+.caixa b.t { font: 600 1.05rem var(--display); color: var(--tinta); }
+.exemplo { border-left: 6px solid var(--verde); }
+.porque { border-left: 6px solid var(--laranja); }
+ul.lista { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+
+.tabela { overflow-x: auto; border: 2px solid var(--linha); border-radius: 14px; }
+table { border-collapse: collapse; width: 100%; font-size: .95rem; }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--linha); vertical-align: top; }
+th { font: 600 .95rem var(--display); color: var(--tinta); background: var(--creme); }
+td.v { font-variant-numeric: tabular-nums; font-weight: 800; white-space: nowrap; }
+td.pos { color: var(--verde); } td.neg { color: var(--vermelho); }
+tr:last-child td { border-bottom: 0; }
+
+figure { margin: 0; display: grid; gap: 8px; }
+figcaption { color: var(--suave); font-size: .9rem; }
+.diagrama { background: var(--creme); border: 2px solid var(--linha); border-radius: 18px; padding: 10px; }
+.diagrama text { font-family: var(--corpo); fill: var(--tinta); }
+
+/* laboratorio do neuronio */
+.lab { background: var(--creme); border: 2px solid var(--tinta); border-radius: 18px; padding: 16px; display: grid; gap: 12px; box-shadow: 0 4px 0 var(--tinta); }
+.lab label { display: grid; gap: 4px; font-weight: 700; color: var(--tinta); }
+.lab input[type=range] { width: 100%; height: 44px; accent-color: var(--laranja-e); }
+.lab .linha { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.lab button { min-height: 44px; padding: 0 16px; border-radius: 12px; border: 2px solid var(--tinta); background: var(--amarelo); color: #281e28; font: 600 1rem var(--display); cursor: pointer; }
+.lab .placar { font: 700 1rem var(--display); color: var(--tinta); }
+.lab svg { width: 100%; height: auto; background: var(--papel); border-radius: 12px; border: 1px solid var(--linha); }
+.lab svg text { font: 600 11px var(--corpo); fill: var(--suave); }
+
+.telas { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.telas img { border-radius: 16px; border: 2px solid var(--linha); width: 100%; height: auto; }
+
+footer { background: var(--grama); color: #fff7e8; padding-block: 36px calc(36px + env(safe-area-inset-bottom, 0px)); border-top: 6px solid var(--grama-e); }
+footer .envelope { display: flex; flex-wrap: wrap; gap: 14px; justify-content: space-between; align-items: center; }
+footer a { color: #fff7e8; }
+
+@media (max-width: 640px) {
+  body { font-size: 16px; }
+  .formula { font-size: .98rem; }
+  .telas { grid-template-columns: 1fr; }
+  section { padding-block: 28px; }
+}
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+</style>
+</head>
+<body>
+
+<header class="ceu">
+  <div class="envelope barra">
+    <a class="marca" href="./"><i aria-hidden="true"></i>Capigoshi</a>
+    <a class="voltar" href="./#cerebro">← Voltar</a>
+  </div>
+  <div class="envelope topo">
+    <p class="pixel" style="color:var(--tinta);opacity:.75">v1.5 · o cérebro, com a matemática</p>
+    <h1>Como pensa um bichinho <span>de 50 KB.</span></h1>
+    <p class="sub">No modo Olhar, quem decide o que a Capi faz é uma rede de neurônios que disparam spikes, como os de verdade. Ela roda dentro da placa, só com números inteiros, e aprende com você. Aqui está cada conta.</p>
+  </div>
+  <div class="chao" aria-hidden="true"></div>
+</header>
+
+<main class="envelope">
+
+  <section aria-labelledby="t-ciclo">
+    <h2 id="t-ciclo">O ciclo de um segundo</h2>
+    <p>Uma vez por segundo, o cérebro faz sempre a mesma volta. Todo o resto desta página detalha uma das setas abaixo.</p>
+    <figure class="diagrama">
+      <svg viewBox="0 0 640 300" role="img" aria-labelledby="dg-t dg-d">
+        <title id="dg-t">Arquitetura do cérebro</title>
+        <desc id="dg-d">107 sentidos entram em 96 neurônios ocultos, que alimentam 100 neurônios de ação. O relógio de hábitos e as vontades somam corrente direto nas ações. A ação com mais spikes vence, e a recompensa volta para os pesos.</desc>
+        <defs><marker id="seta" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--suave)"/></marker></defs>
+        <g stroke="var(--tinta)" stroke-width="2">
+          <rect x="12" y="70" width="140" height="110" rx="16" fill="var(--horizonte)"/>
+          <rect x="222" y="70" width="140" height="110" rx="16" fill="var(--roxo-cl)"/>
+          <rect x="432" y="70" width="140" height="110" rx="16" fill="var(--amarelo)"/>
+          <rect x="432" y="8" width="196" height="44" rx="12" fill="var(--papel)"/>
+          <rect x="222" y="8" width="140" height="44" rx="12" fill="var(--papel)"/>
+          <rect x="222" y="226" width="350" height="56" rx="14" fill="var(--papel)" stroke-dasharray="6 5"/>
+        </g>
+        <g stroke="var(--suave)" stroke-width="2.5" fill="none" marker-end="url(#seta)">
+          <path d="M152 125H218"/><path d="M362 125H428"/>
+          <path d="M530 52V66"/><path d="M362 30H470V66"/>
+          <path d="M502 180V222"/><path d="M300 222V184"/>
+          <path d="M572 125H628V40"/>
+        </g>
+        <text x="82" y="112" text-anchor="middle" font-weight="800" font-size="26">107</text>
+        <text x="82" y="138" text-anchor="middle" font-size="14">sentidos</text>
+        <text x="82" y="158" text-anchor="middle" font-size="11">hora, toque, som…</text>
+        <text x="292" y="112" text-anchor="middle" font-weight="800" font-size="26">96</text>
+        <text x="292" y="138" text-anchor="middle" font-size="14">ocultos</text>
+        <text x="292" y="158" text-anchor="middle" font-size="11">80 exc. · 16 inib.</text>
+        <text x="502" y="112" text-anchor="middle" font-weight="800" font-size="26" fill="#281e28">100</text>
+        <text x="502" y="138" text-anchor="middle" font-size="14" fill="#281e28">ações</text>
+        <text x="502" y="158" text-anchor="middle" font-size="11" fill="#281e28">a que disparar mais vence</text>
+        <text x="530" y="35" text-anchor="middle" font-size="13">relógio de hábitos · 72 × 100</text>
+        <text x="292" y="35" text-anchor="middle" font-size="13">7 vontades</text>
+        <text x="397" y="250" text-anchor="middle" font-size="13" font-weight="700">recompensa R (estrela, carinho, shh…)</text>
+        <text x="397" y="270" text-anchor="middle" font-size="12">muda os pesos de quem levou à ação</text>
+        <text x="186" y="115" text-anchor="middle" font-size="11">STDP</text>
+        <text x="396" y="115" text-anchor="middle" font-size="11">R-STDP</text>
+      </svg>
+      <figcaption>Os números são os da placa. As vontades voltam para a rede também como sentidos (28 dos 107).</figcaption>
+    </figure>
+    <ol class="lista">
+      <li><b>Sentir:</b> o que a placa lê vira probabilidades de spike nos 107 neurônios de entrada.</li>
+      <li><b>Pensar:</b> a rede roda 20 passos de 50 ms (1 segundo de "pensamento").</li>
+      <li><b>Agir:</b> entre as ações permitidas agora, vence a que mais disparou.</li>
+      <li><b>Aprender:</b> o que você faz depois vira uma recompensa <var>R</var>, que mexe nos pesos.</li>
+    </ol>
+    <ul class="indice" aria-label="Seções">
+      <li><a href="#sentidos">1. Sentidos viram spikes</a></li>
+      <li><a href="#neuronio">2. O neurônio LIF</a></li>
+      <li><a href="#decisao">3. Como ela decide</a></li>
+      <li><a href="#stdp">4. STDP: aprender sozinha</a></li>
+      <li><a href="#rstdp">5. Recompensa e elegibilidade</a></li>
+      <li><a href="#relogio">6. O relógio de hábitos</a></li>
+      <li><a href="#recompensas">7. A tabela de recompensas</a></li>
+      <li><a href="#vontades">8. As 7 vontades</a></li>
+      <li><a href="#placa">9. Cabendo na placa</a></li>
+      <li><a href="#resultados">10. Funciona?</a></li>
+    </ul>
+  </section>
+
+  <section id="sentidos" aria-labelledby="t-sent">
+    <span class="num">1</span>
+    <h2 id="t-sent">Sentidos viram spikes</h2>
+    <p>Neurônios de spike só entendem "disparou" ou "não disparou". Então cada número do mundo (a hora, a bateria, a fome) é espalhado por um grupinho de neurônios, cada um com o seu valor preferido <var>c<sub>k</sub></var>. Quanto mais perto o valor está do preferido, mais forte a ativação, numa curva em forma de tenda:</p>
+    <div class="formula"><span class="rot">ativação do neurônio k (0 a 255)</span>
+      <var>a<sub>k</sub></var> = 255 · max(0, <var>Δ</var> − |<var>x</var> − <var>c<sub>k</sub></var>|) / <var>Δ</var>
+    </div>
+    <p>A cada passo de 50 ms, cada neurônio sorteia se dispara. A chance máxima é 50%:</p>
+    <div class="formula"><span class="rot">chance de spike por passo</span>
+      <var>P</var>(spike) = (<var>a<sub>k</sub></var> · 128 / 256) / 256 &nbsp;≤&nbsp; 0,5
+    </div>
+    <p>Eventos rápidos (um toque, uma sacudida, um barulho) não usam sorteio: o neurônio do evento dispara uma rajada de 3 spikes seguidos.</p>
+    <div class="caixa exemplo"><b class="t">Exemplo: são 19h40</b>
+      <p>A hora usa 8 neurônios em círculo, um a cada 3 h (0h, 3h, 6h… 21h), então <var>Δ</var> = 180 min. Às 19h40 (1180 min), o neurônio das 18h (1080) fica a 100 min: <var>a</var> = 255 · 80/180 = 113. O das 21h (1260) fica a 80 min: <var>a</var> = 255 · 100/180 = 141. Os outros seis ficam em zero. Por isso a hora "acende" sempre dois vizinhos, e a rede sente o tempo andando.</p>
+    </div>
+    <div class="tabela"><table>
+      <thead><tr><th>Grupo</th><th>Neurônios</th><th>Como codifica</th></tr></thead>
+      <tbody>
+        <tr><td>Hora do dia</td><td class="v">8</td><td>tenda circular, um a cada 3 h</td></tr>
+        <tr><td>Toque (onde, tipo, frequência, tempo sem toque)</td><td class="v">18</td><td>rajadas e tenda (tempo sem toque em escala log₂)</td></tr>
+        <tr><td>Movimento, orientação, som</td><td class="v">14</td><td>rajadas (sacudida, barulho) e tenda (volume)</td></tr>
+        <tr><td>As 7 vontades</td><td class="v">28</td><td>4 neurônios por vontade, tenda</td></tr>
+        <tr><td>Última ação e resposta do dono</td><td class="v">11</td><td>bits e rajadas</td></tr>
+        <tr><td>Luz, dia, bateria, outra Capi, novidade</td><td class="v">21</td><td>liga/desliga e tenda</td></tr>
+        <tr><td>Clima e temperatura</td><td class="v">7</td><td>sol, nublado, chuva, tempestade; frio a calor</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section id="neuronio" aria-labelledby="t-neur">
+    <span class="num">2</span>
+    <h2 id="t-neur">O neurônio LIF</h2>
+    <p>LIF quer dizer <i>leaky integrate-and-fire</i>: o neurônio <b>integra</b> a corrente que chega, <b>vaza</b> um pouco a cada passo e, quando o potencial passa do limiar, <b>dispara</b>. Na Capi, cada passo é assim:</p>
+    <div class="formula"><span class="rot">um passo de 50 ms</span>
+      <var>v</var> ← <var>v</var> + <var>I</var> − (<var>v</var> − <var>v</var><sub>repouso</sub>) / 16 + <var>ruído</var>
+    </div>
+    <div class="formula"><span class="rot">disparo</span>
+      se <var>v</var> ≥ <var>θ</var>: &nbsp;spike, &nbsp;<var>v</var> ← −200, &nbsp;2 passos sem integrar (refratário)
+    </div>
+    <p>O vazamento de 1/16 vira um deslocamento de bits (<code>v &gt;&gt; 4</code>), que é quase de graça no processador. O ruído é sorteado entre −30 e +30 de uma tabela de 1024 valores; quando a Capi já tem afeto acima de 60, ele cai para ±15 e ela fica mais previsível, como um bichinho adulto.</p>
+    <p>A corrente que chega em cada camada:</p>
+    <div class="formula"><span class="rot">oculto h</span>
+      <var>I<sub>h</sub></var> = ( Σ<sub>entradas que dispararam</sub> <var>w<sub>ih</sub></var> ) / 64 &nbsp;+&nbsp; ( Σ<sub>ocultos do passo anterior</sub> <var>w<sub>hh</sub></var> ) / 4
+    </div>
+    <div class="formula"><span class="rot">ação o</span>
+      <var>J<sub>o</sub></var> = 6 · Σ<sub>ocultos excitatórios que dispararam</sub> <var>w<sub>ho</sub></var> &nbsp;+&nbsp; <var>direto<sub>o</sub></var> &nbsp;−&nbsp; 80 · (ações que dispararam no passo anterior, fora ela)
+    </div>
+    <p>O último termo é a <b>inibição lateral</b>: cada ação que dispara empurra as outras para baixo. É o que faz uma ação ganhar em vez de todas dispararem juntas. O <var>direto</var> é a corrente que vem do relógio de hábitos e das vontades (seções 6 e 8).</p>
+
+    <div class="lab" id="lab">
+      <b class="t" style="font:600 1.1rem var(--display);color:var(--tinta)">Laboratório: brinque com um neurônio</b>
+      <p style="color:var(--suave)">Mesma conta da placa, em inteiros, com limiar 1000. Mude a corrente e veja quantas vezes ele dispara em 1 segundo (20 passos). A ação precisa de pelo menos 4 spikes na janela para poder vencer.</p>
+      <label for="corrente">Corrente por passo: <span id="corrente-v">250</span></label>
+      <input type="range" id="corrente" min="0" max="400" step="5" value="250">
+      <div class="linha">
+        <label style="display:flex;gap:8px;align-items:center;min-height:44px"><input type="checkbox" id="ruido" checked style="width:22px;height:22px"> ruído ±30</label>
+        <button type="button" id="sortear">Sortear de novo</button>
+        <span class="placar" id="placar" aria-live="polite"></span>
+      </div>
+      <svg id="grafico" viewBox="0 0 600 220" role="img" aria-label="Potencial do neurônio ao longo de 60 passos"></svg>
+    </div>
+    <div class="caixa porque"><b class="t">Por que o limiar dos ocultos se ajusta sozinho</b>
+      <p>A cada 100 passos, cada neurônio oculto confere quanto disparou. Se disparou em mais de 30% dos passos, o limiar sobe 2%; se disparou em menos de 1%, desce 2%; fica sempre entre 500 e 4000. Isso é <b>homeostase</b>: nenhum neurônio fica gritando o tempo todo nem dorme para sempre.</p>
+    </div>
+  </section>
+
+  <section id="decisao" aria-labelledby="t-dec">
+    <span class="num">3</span>
+    <h2 id="t-dec">Como ela decide</h2>
+    <p>Uma decisão é uma janela de 20 passos (1 segundo). No fim, conta-se quantos spikes cada uma das 100 ações deu:</p>
+    <div class="formula"><span class="rot">a ação escolhida</span>
+      <var>a</var>* = argmax<sub><var>o</var> permitida</sub> spikes(<var>o</var>), &nbsp;desempate pelo maior <var>v<sub>o</sub></var> no fim; &nbsp;se spikes(<var>a</var>*) &lt; 4 → ficar quieta
+    </div>
+    <p>"Permitida" é uma máscara: a ação precisa ter passado o tempo de descanso dela, a pré-condição precisa valer (só pede comida com fome, só dá bom dia de manhã…) e, com energia abaixo de 40, as ações cansativas ficam bloqueadas. Uma ação que começou fica até terminar a duração dela; enquanto isso a rede não decide de novo, a não ser que aconteça algo forte (toque, sacudida, comida).</p>
+    <p>Por cima da rede há poucas regras fixas, como reflexos:</p>
+    <ul class="lista">
+      <li>energia abaixo de 20 → dorme, sem perguntar à rede; dorme até a energia passar de 90;</li>
+      <li>fome acima de 80 → corrente fixa de 500 em "pedir comida";</li>
+      <li>estresse acima de 80 → corrente fixa de 500 em "esconder o rosto";</li>
+      <li>afeto abaixo de 20 → +1000 em "pedir carinho" (solidão: é isso que a faz explorar até descobrir a sua hora).</li>
+    </ul>
+  </section>
+
+  <section id="stdp" aria-labelledby="t-stdp">
+    <span class="num">4</span>
+    <h2 id="t-stdp">STDP: aprender sozinha o que anda junto</h2>
+    <p>Entre os sentidos e os ocultos, ninguém dá nota: a rede só observa o que acontece junto. A regra é a STDP (<i>spike-timing-dependent plasticity</i>): se a entrada dispara <b>logo antes</b> do oculto, ela provavelmente ajudou, e a ligação fica mais forte. Se dispara <b>logo depois</b>, não ajudou, e fica mais fraca.</p>
+    <p>Cada spike deixa um rastro que apaga 1/16 por passo, e some depois de 16 passos (0,8 s):</p>
+    <div class="formula"><span class="rot">rastro, Δt passos depois do spike</span>
+      <var>x</var>(Δ<var>t</var>) = 255 · (15/16)<sup>Δ<var>t</var></sup>, &nbsp;para 0 ≤ Δ<var>t</var> &lt; 16
+    </div>
+    <div class="formula"><span class="rot">entrada antes do oculto: fortalece (limite suave)</span>
+      Δ<var>w</var> = + <var>A</var><sub>+</sub> · <var>x</var>(Δ<var>t</var>) · (<var>W</var><sub>máx</sub> − <var>w</var>) / 2<sup>14</sup>, &nbsp;<var>A</var><sub>+</sub> = 2
+    </div>
+    <div class="formula"><span class="rot">entrada depois do oculto: enfraquece</span>
+      Δ<var>w</var> = − <var>A</var><sub>−</sub> · <var>x</var>(Δ<var>t</var>) · <var>w</var> / 2<sup>14</sup>, &nbsp;<var>A</var><sub>−</sub> = 3
+    </div>
+    <figure class="diagrama">
+      <svg id="curva-stdp" viewBox="0 0 600 200" role="img" aria-label="Janela da STDP: positiva quando a entrada vem antes, negativa quando vem depois, sumindo em 16 passos"></svg>
+      <figcaption>A janela da STDP para um peso no meio da faixa. À esquerda, a entrada veio antes (fortalece); à direita, veio depois (enfraquece). O lado negativo é maior (<var>A</var><sub>−</sub> &gt; <var>A</var><sub>+</sub>), então coincidência por acaso tende a enfraquecer.</figcaption>
+    </figure>
+    <div class="caixa porque"><b class="t">Por que "limite suave" e pesos ×16</b>
+      <p>Os pesos ficam guardados multiplicados por 16 (0 a 4080), para que passos pequenos não virem zero na divisão inteira. E o fator (<var>W</var><sub>máx</sub> − <var>w</var>) faz o peso crescer cada vez mais devagar perto do topo, enquanto o fator <var>w</var> faz ele cair cada vez mais devagar perto de zero. Com passos inteiros fixos, como no projeto original, a depressão vencia e em 10 minutos todos os ocultos calavam.</p>
+    </div>
+    <p>A cada 100 passos, a soma das entradas de cada oculto é <b>normalizada</b> de volta à soma com que ele nasceu:</p>
+    <div class="formula"><span class="rot">normalização</span>
+      <var>w<sub>ih</sub></var> ← <var>w<sub>ih</sub></var> · <var>S</var><sub>0,h</sub> / Σ<sub><var>i</var></sub> <var>w<sub>ih</sub></var>
+    </div>
+    <p>Assim, ganhar força numa entrada significa perder em outra. Cada oculto vira especialista numa combinação de sentidos (por exemplo, "noite + sem toque há muito tempo").</p>
+  </section>
+
+  <section id="rstdp" aria-labelledby="t-rstdp">
+    <span class="num">5</span>
+    <h2 id="t-rstdp">Recompensa e elegibilidade (R-STDP)</h2>
+    <p>Entre os ocultos e as ações, o aprendizado precisa de nota: foi bom ou ruim? Só que a nota chega depois. Você dá a estrela um ou dois segundos depois da dancinha. A solução é o <b>rastro de elegibilidade</b> <var>e</var>: cada sinapse guarda "eu ajudei a última ação disparar".</p>
+    <div class="formula"><span class="rot">quando a ação o dispara, logo depois do oculto h</span>
+      <var>e<sub>ho</sub></var> ← <var>e<sub>ho</sub></var> + <var>A</var><sub>+</sub> · <var>x</var>(Δ<var>t</var>) / 2
+    </div>
+    <div class="formula"><span class="rot">quando o oculto h dispara logo depois da ação o</span>
+      <var>e<sub>ho</sub></var> ← <var>e<sub>ho</sub></var> − <var>A</var><sub>−</sub> · <var>x</var>(Δ<var>t</var>) / 2
+    </div>
+    <div class="formula"><span class="rot">o rastro apaga (a cada 16 passos)</span>
+      <var>e</var> ← <var>e</var> − 7<var>e</var>/32 &nbsp;≈&nbsp; <var>e</var> · (63/64)<sup>16</sup>
+    </div>
+    <p>Quando chega uma recompensa <var>R</var>, ela vira mudança de peso, <b>só na coluna da ação que recebeu o crédito</b>:</p>
+    <div class="formula"><span class="rot">R-STDP</span>
+      Δ<var>w<sub>ho</sub></var> = <var>η</var> · <var>R</var> · <var>e<sub>ho</sub></var> / 1024, &nbsp;com <var>w</var> preso entre o piso e 255
+    </div>
+    <p>A taxa <var>η</var> é 4 nos primeiros 7 dias (filhote aprende rápido) e 2 depois. As ações de comer, dormir e as sociais têm um piso de 5, para nunca serem esquecidas por completo.</p>
+    <div class="caixa exemplo"><b class="t">Exemplo: uma estrela depois da dancinha</b>
+      <p>A Capi adulta (<var>η</var> = 2) dançou, e um oculto que disparou junto deixou <var>e</var> = 300 na sinapse dele com "dancinha". Você segura o dedo nela: <var>R</var> = +20. A mudança é 2 · 20 · 300 / 1024 = 11,7, que vira <b>+11</b> em inteiros. Dez estrelas parecidas somam uns +110 numa escala de 0 a 255: a dancinha passa a disparar com muito mais facilidade naquele contexto.</p>
+    </div>
+    <div class="caixa porque"><b class="t">E quando a bronca chega tarde demais?</b>
+      <p>"Ignorado" só é decidido 60 segundos depois de um pedido, mas a elegibilidade some em 10 a 15 segundos. Para isso existe a <b>marca</b>: quando um pedido começa, a rede anota quais ocultos estavam ativos. Se ele for ignorado, esses ocultos levam o castigo direto: Δ<var>w</var> = <var>η</var> · <var>R</var> / 4. Sem a marca, a Capi nunca aprendia a parar de pedir: eram 9 pedidos por hora às 3 da manhã.</p>
+    </div>
+  </section>
+
+  <section id="relogio" aria-labelledby="t-rel">
+    <span class="num">6</span>
+    <h2 id="t-rel">O relógio de hábitos</h2>
+    <p>A camada oculta é boa para "o que está acontecendo", mas ruim para "que horas são": 8 neurônios de 3 em 3 horas não separam 19h de 17h. Por isso, ao lado da rede, existe uma tabela de <b>72 células de 20 minutos × 100 ações</b>. Cada célula manda corrente direto nas ações, interpolando com a vizinha:</p>
+    <div class="formula"><span class="rot">corrente do relógio no minuto m (b = célula, f = minutos dentro dela)</span>
+      <var>direto<sub>o</sub></var>(<var>m</var>) = ( <var>W</var><sub><var>b</var>,<var>o</var></sub> · (20 − <var>f</var>) + <var>W</var><sub><var>b</var>+1,<var>o</var></sub> · <var>f</var> ) / 20
+    </div>
+    <p>E aprende com cada recompensa, creditando o minuto em que a ação <b>começou</b> (assim até a bronca atrasada cai na hora certa):</p>
+    <div class="formula"><span class="rot">aprendizado do relógio</span>
+      Δ<var>W</var><sub><var>b</var>,<var>o</var></sub> = <var>η</var> · <var>R</var> · <var>K</var> · (20 − <var>f</var>)/20, &nbsp;<var>K</var> = 24 se <var>R</var> &gt; 0, &nbsp;<var>K</var> = 8 se <var>R</var> &lt; 0, &nbsp;|<var>W</var>| ≤ 1500
+    </div>
+    <div class="caixa exemplo"><b class="t">Exemplo: carinho às 19h</b>
+      <p>Uma Capi filhote (<var>η</var> = 4) pede carinho às 19h00 em ponto e você faz carinho logo em seguida: <var>R</var> = +10 (antes dos ajustes de afeto e habituação). A célula das 19h00 ganha 4 · 10 · 24 = <b>960</b> na ação "pedir carinho". Uma corrente de 960 por passo, perto do limiar de 1000, quase sozinha já faz a ação disparar. Prêmio pesa 3 vezes mais que castigo (24 contra 8): um carinho na hora certa vale mais que um pedido ignorado.</p>
+    </div>
+    <figure>
+      <div class="telas">
+        <img src="img/raiox_relogio.png" width="390" height="844" alt="Raio-X no celular: o anel de 24 horas com os hábitos aprendidos e a lista de hábitos por horário" loading="lazy">
+        <img src="img/raiox_recompensas.png" width="390" height="844" alt="Raio-X no celular: as últimas recompensas, com o valor e o motivo de cada uma" loading="lazy">
+      </div>
+      <figcaption>O raio-X mostra essa tabela num anel de 24 h (cada fatia é uma célula de 20 min) e as últimas recompensas. Abra pelo Wi-Fi da placa: BOOT por 3 segundos.</figcaption>
+    </figure>
+  </section>
+
+  <section id="recompensas" aria-labelledby="t-rec">
+    <span class="num">7</span>
+    <h2 id="t-rec">A tabela de recompensas</h2>
+    <p>Tudo o que você faz vira um número. A maioria só vale se acontecer até 3 segundos depois de a ação começar: é assim que a recompensa acha a ação certa.</p>
+    <div class="tabela"><table>
+      <thead><tr><th>O que aconteceu</th><th>R</th><th>Quando vale</th></tr></thead>
+      <tbody>
+        <tr><td>⭐ Estrela (segurar o dedo parado nela)</td><td class="v pos">+20</td><td>até 3 s depois do início da ação</td></tr>
+        <tr><td>Comida quando ela pediu comida</td><td class="v pos">+15 × (1 + fome/100)</td><td>durante o pedido</td></tr>
+        <tr><td>Jogo até o fim</td><td class="v pos">+12</td><td>sempre (+5 se repetir)</td></tr>
+        <tr><td>Carinho (toque rápido nela)</td><td class="v pos">+10 × (1 + afeto/100)</td><td>até 3 s depois</td></tr>
+        <tr><td>Atender um chamado</td><td class="v pos">+8</td><td>até 10 s depois do chamado</td></tr>
+        <tr><td>Tocar nela enquanto está quieta</td><td class="v neg">−2</td><td>ela queria ficar em paz</td></tr>
+        <tr><td>Fazer som (custo de qualquer som)</td><td class="v neg">−(3 + <var>n</var>)</td><td>no início, <var>n</var> = vezes recentes</td></tr>
+        <tr><td>Pedido ignorado</td><td class="v neg">−5</td><td>60 s sem resposta</td></tr>
+        <tr><td>Som sem resposta</td><td class="v neg">−6</td><td>30 s sem resposta</td></tr>
+        <tr><td>Sacudida leve</td><td class="v neg">−8</td><td>até 3 s depois</td></tr>
+        <tr><td>Som no horário de silêncio (22h às 8h)</td><td class="v neg">−10</td><td>além do custo do som</td></tr>
+        <tr><td>Sacudida forte</td><td class="v neg">−12</td><td>sempre</td></tr>
+        <tr><td>🤫 Shh (segurar o dedo parado no fundo)</td><td class="v neg">−15</td><td>até 3 s depois</td></tr>
+      </tbody>
+    </table></div>
+    <p>Duas correções deixam a recompensa mais justa:</p>
+    <div class="formula"><span class="rot">habituação: o mesmo prêmio cansa</span>
+      <var>R</var> ← <var>R</var> · 3 / (3 + <var>n</var>), &nbsp;<var>n</var> ≈ execuções dessa ação na última hora
+    </div>
+    <p>O contador <var>n</var> sobe 1 a cada execução e perde 1/6 a cada 10 minutos, uma aproximação de "quantas vezes na última hora" que não precisa guardar lista nenhuma. Na quarta dancinha seguida, a estrela já vale a metade.</p>
+  </section>
+
+  <section id="vontades" aria-labelledby="t-von">
+    <span class="num">8</span>
+    <h2 id="t-von">As 7 vontades</h2>
+    <p>As vontades (<i>drives</i>) são o "estado de espírito". Andam sozinhas, minuto a minuto, e entram na rede como sentidos. Ficam guardadas ×10 em inteiros (fome de 0 a 1000 quer dizer 0 a 100).</p>
+    <div class="tabela"><table>
+      <thead><tr><th>Vontade</th><th>Por minuto</th><th>O que mexe nela</th></tr></thead>
+      <tbody>
+        <tr><td>Fome</td><td class="v">+1</td><td>comer: −40</td></tr>
+        <tr><td>Energia</td><td class="v">−0,5 acordada · +3 dormindo</td><td>cada ação gasta; frio e chuva gastam mais</td></tr>
+        <tr><td>Humor (−100 a 100)</td><td class="v">volta 1 ao alvo</td><td>cada recompensa soma <var>R</var>/2; o alvo depende do clima (sol +20, tempestade −50)</td></tr>
+        <tr><td>Tédio</td><td class="v">+1 sem interação</td><td>brincar: −30</td></tr>
+        <tr><td>Afeto</td><td class="v">−0,2 a cada 10 min</td><td>cada recompensa boa: +0,2; depois de passar de 60, nunca cai abaixo de 50</td></tr>
+        <tr><td>Curiosidade</td><td class="v">−1</td><td>novidade: +15; sol aumenta</td></tr>
+        <tr><td>Estresse</td><td class="v">−2</td><td>sacudida forte +30, shh +15, barulho +10</td></tr>
+      </tbody>
+    </table></div>
+    <p>Quando a placa fica desligada, ao ligar de novo as vontades andam de uma vez pelo tempo que passou (até 24 horas). Ela acorda com fome, como deveria.</p>
+    <p>Por fim, o <b>esquecimento</b>: uma vez por dia, cada peso que aprendeu anda 1% de volta ao valor com que nasceu, e cada célula do relógio anda 1% para zero:</p>
+    <div class="formula"><span class="rot">esquecimento diário</span>
+      <var>w</var> ← <var>w</var> + ⌈ |<var>w</var><sub>0</sub> − <var>w</var>| / 100 ⌉ · sinal(<var>w</var><sub>0</sub> − <var>w</var>)
+    </div>
+    <p>Hábito que você para de reforçar vai sumindo em semanas. Hábito que você mantém fica.</p>
+  </section>
+
+  <section id="placa" aria-labelledby="t-placa">
+    <span class="num">9</span>
+    <h2 id="t-placa">Cabendo na placa</h2>
+    <p>O ESP32-S3 não tem unidade de ponto flutuante rápida para isso, e o MicroPython é lento em laços. Por isso:</p>
+    <ul class="lista">
+      <li><b>Só inteiros.</b> Frações viram ×10 ou deslocamento de bits: dividir por 16 é <code>&gt;&gt; 4</code>, dividir por 1024 é <code>&gt;&gt; 10</code>.</li>
+      <li><b>Código de máquina nos laços quentes.</b> As 10 funções que mais rodam (somar correntes, atualizar neurônios, STDP, elegibilidade) são compiladas com <code>@micropython.viper</code>. Um passo da rede caiu de <b>16 ms para 2,7 ms</b>; a decisão inteira leva uns 54 ms. A versão em Python puro continua no projeto, e as duas dão o mesmo resultado, inteiro por inteiro (conferido na placa).</li>
+      <li><b>Arrays compactos.</b> Pesos em <code>array('h')</code> de 16 bits. O cérebro inteiro tem uns 52 KB.</li>
+      <li><b>Memória que não se perde.</b> O <code>brain.bin</code> guarda os pesos, os limiares, o relógio e as vontades, com um CRC32 no fim. É gravado num arquivo temporário e trocado de uma vez, guardando a cópia anterior em <code>brain.bak</code>: se a energia cair no meio, sempre sobra um arquivo inteiro. Grava a cada 10 minutos e quando ela dorme.</li>
+      <li><b>Mesma semente, mesmo bichinho.</b> Cada cérebro nasce de uma semente aleatória de 16 bits. Com os pesos de nascença guardados pela semente, o esquecimento sabe para onde voltar.</li>
+    </ul>
+  </section>
+
+  <section id="resultados" aria-labelledby="t-res">
+    <span class="num">10</span>
+    <h2 id="t-res">Funciona?</h2>
+    <p>Antes de ir para a placa, o cérebro passa por um simulador em Python que vive uma semana inteira com um "dono de mentira" em cerca de um minuto. Os testes de aceite medem:</p>
+    <div class="tabela"><table>
+      <thead><tr><th>Teste</th><th>Resultado medido</th></tr></thead>
+      <tbody>
+        <tr><td><b>Silêncio:</b> uma Capi falante, com o dono ignorando os sons</td><td>de 12,0 para 0,1 sons por hora</td></tr>
+        <tr><td><b>Hábito:</b> o dono só dá carinho às 19h</td><td>ela pede na janela certa em 5 a 6 dos 7 dias (4 sementes, média 5,25)</td></tr>
+        <tr><td><b>Pedidos à toa</b> numa semana normal</td><td>"pedir comida" de 544 para 70; "pedir carinho" de 498 para 246</td></tr>
+        <tr><td><b>Velocidade:</b> 7 dias simulados</td><td>cerca de 66 s no computador</td></tr>
+      </tbody>
+    </table></div>
+    <p>Na placa, o próximo teste é o de verdade: 24 horas ligada sem travar, e dois dias com o dono ignorando os sons. Cada constante que mudou em relação ao projeto original, com o motivo e o número medido, está no <a href="https://github.com/rjcaubit/capigoshi/blob/main/CALIBRACAO.md" rel="noopener">CALIBRACAO.md</a>. O código do cérebro inteiro está em <a href="https://github.com/rjcaubit/capigoshi/tree/main/companion" rel="noopener">companion/</a>.</p>
+  </section>
+</main>
+
+<footer>
+  <div class="envelope">
+    <span class="pixel">capigoshi · v1.5 · um cérebro de 50 KB</span>
+    <a href="./">Voltar para o Capigoshi</a>
+  </div>
+</footer>
+
+<script>
+// Laboratorio: a mesma conta do companion/nucleo.py (oculta), em inteiros.
+(function () {
+  var V_TH = 1000, V_RESET = -200, REFRAC = 2, N = 60;
+  var faixa = document.getElementById('corrente'), rotulo = document.getElementById('corrente-v');
+  var ruidoCx = document.getElementById('ruido'), svg = document.getElementById('grafico');
+  var placar = document.getElementById('placar'), semente = 7;
+  function rnd() { semente = (semente * 1103515245 + 12345) & 0x7fffffff; return semente; }
+  function cor(nome) { return getComputedStyle(document.documentElement).getPropertyValue(nome).trim(); }
+  function desenhar() {
+    var I = +faixa.value, ruido = ruidoCx.checked, s0 = semente;
+    rotulo.textContent = I;
+    var v = 0, ref = 0, pts = [], spikes = [];
+    for (var t = 0; t < N; t++) {
+      if (ref) { ref--; }
+      else {
+        var r = ruido ? (rnd() % 61) - 30 : 0;
+        v += I - (v >> 4) + r;
+        if (v >= V_TH) { spikes.push(t); pts.push([t, V_TH]); v = V_RESET; ref = REFRAC; }
+      }
+      pts.push([t + .999, v]);
+    }
+    semente = s0;
+    var W = 600, H = 220, x0 = 36, y = function (val) { return 16 + (1100 - val) * (H - 40) / 1400; };
+    var x = function (t) { return x0 + t * (W - x0 - 8) / N; };
+    var d = 'M' + x(0) + ' ' + y(0) + pts.map(function (p) { return 'L' + x(p[0]).toFixed(1) + ' ' + y(p[1]).toFixed(1); }).join('');
+    var janela = spikes.filter(function (t) { return t < 20; }).length;
+    var h = '';
+    h += '<rect x="' + x(0) + '" y="8" width="' + (x(20) - x(0)) + '" height="' + (H - 30) + '" fill="' + cor('--roxo-cl') + '" />';
+    h += '<text x="' + (x(10)) + '" y="' + (H - 6) + '" text-anchor="middle">janela de decisão (20 passos)</text>';
+    h += '<line x1="' + x0 + '" x2="' + (W - 8) + '" y1="' + y(V_TH) + '" y2="' + y(V_TH) + '" stroke="' + cor('--vermelho') + '" stroke-dasharray="6 5" stroke-width="2"/>';
+    h += '<text x="' + (W - 10) + '" y="' + (y(V_TH) - 6) + '" text-anchor="end">limiar 1000</text>';
+    h += '<line x1="' + x0 + '" x2="' + (W - 8) + '" y1="' + y(0) + '" y2="' + y(0) + '" stroke="' + cor('--linha') + '"/>';
+    h += '<text x="' + (x0 - 4) + '" y="' + (y(0) + 4) + '" text-anchor="end">0</text>';
+    h += '<path d="' + d + '" fill="none" stroke="' + cor('--laranja-e') + '" stroke-width="2.5" stroke-linejoin="round"/>';
+    spikes.forEach(function (t) { h += '<line x1="' + x(t) + '" x2="' + x(t) + '" y1="' + y(V_TH) + '" y2="10" stroke="' + cor('--tinta') + '" stroke-width="2.5" stroke-linecap="round"/>'; });
+    svg.innerHTML = h;
+    var equilibrio = 16 * I;
+    placar.textContent = janela + (janela === 1 ? ' spike' : ' spikes') + ' em 1 s' + (janela >= 4 ? ' · pode vencer!' : ' · fraco demais') +
+      (equilibrio < V_TH && !ruido ? ' · sem ruído, ele estaciona perto de ' + equilibrio + ' e nunca dispara' : '');
+  }
+  faixa.addEventListener('input', desenhar);
+  ruidoCx.addEventListener('change', desenhar);
+  document.getElementById('sortear').addEventListener('click', function () { semente = (semente * 7 + 13) & 0xffff; desenhar(); });
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', desenhar);
+  desenhar();
+
+  // Curva da STDP para um peso no meio da faixa (w = 2040 de 4080)
+  var c = document.getElementById('curva-stdp'), WM = 4080, w = 2040, pts2 = [], hh = '';
+  var X = function (dt) { return 300 + dt * 17; }, Y = function (dw) { return 100 - dw * 0.55; };
+  var x = 255 << 8, tr = [];
+  for (var k = 0; k < 16; k++) { tr.push(x >> 8); x -= x >> 4; }
+  hh += '<line x1="20" x2="580" y1="100" y2="100" stroke="' + cor('--linha') + '" stroke-width="2"/>';
+  hh += '<line x1="300" x2="300" y1="10" y2="190" stroke="' + cor('--linha') + '" stroke-width="2"/>';
+  for (var dt = 0; dt < 16; dt++) {
+    var mais = (2 * tr[dt] * (WM - w)) / 16384, menos = (3 * tr[dt] * w) / 16384;
+    hh += '<rect x="' + (X(-dt) - 6) + '" y="' + Y(mais) + '" width="12" height="' + (100 - Y(mais)) + '" rx="3" fill="' + cor('--verde') + '"/>';
+    if (dt > 0) hh += '<rect x="' + (X(dt) - 6) + '" y="100" width="12" height="' + (Y(-menos) - 100) + '" rx="3" fill="' + cor('--vermelho') + '"/>';
+  }
+  hh += '<text x="40" y="30" font-size="13" fill="' + cor('--tinta') + '">entrada antes → mais forte</text>';
+  hh += '<text x="560" y="180" font-size="13" text-anchor="end" fill="' + cor('--tinta') + '">entrada depois → mais fraca</text>';
+  hh += '<text x="306" y="196" font-size="12" fill="' + cor('--suave') + '">Δt = 0</text>';
+  c.innerHTML = hh;
+})();
+</script>
+</body>
+</html>

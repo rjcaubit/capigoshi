@@ -17,7 +17,8 @@ Fica na raiz, e não em `docs/`, porque `docs/` é o site publicado no GitHub Pa
 | `CALIBRACAO.md` | — | Constantes do cérebro que mudaram em relação à fonte e por quê | — |
 | `sons/` | — | Sons `.raw` 16 kHz 16 bits estéreo; `sons/extra/` fora do git (Pixabay) | — |
 | `deploy.sh` | — | Grava o MicroPython (apaga a flash) e copia os arquivos | `esptool.py`, `mpremote` |
-| `docs/` | — | Site publicado (GitHub Pages): `index.html`, `celular.html` | — |
+| `docs/` | — | Site publicado (GitHub Pages): `index.html` (com a seção do cérebro), `cerebro.html` (matemática e lógica do cérebro, com laboratório do neurônio LIF), `celular.html` | — |
+| `README.md` / `README.pt-BR.md` | — | README principal em inglês e versão em português (o `LEIA-ME.md` é o guia antigo, mais detalhado) | — |
 | `design_handoff_capigoshi_1c/` | — | Fonte de verdade visual (`capigoshi-render.js`) | — |
 | `previa/` | — | Prévia no computador (MicroPython Unix) | — |
 | `sdd/ISSUE_{n}/` | — | Specs e tasks do processo SDD | — |
